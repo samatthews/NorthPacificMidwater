@@ -1,0 +1,1900 @@
+---
+title: "04_Tolerances-and-Traits"
+output: html_document
+date: "2023-02-16"
+---
+
+
+#epi and meso ranges
+
+```{r replot epi and meso tolerance as violin plots}
+# vs temp range
+testres_ph <- dunnTest(temprange ~ classification,
+                       data=alltaxaranges[!is.na(alltaxaranges$Diet),],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(19)
+epimesotemp <- ggplot(alltaxaranges[alltaxaranges$taxa_nsamplestotal > 1,], aes(x = classification, y = temprange)) + 
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  ylab(expression(Range~(degree*C))) + 
+  xlab(NULL) + 
+  ggtitle("Temperature")+ 
+  #stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 21, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+epimesotemp
+
+testres_ph <- dunnTest(fluorrange ~ classification,
+                       data=alltaxaranges[!is.na(alltaxaranges$Diet),],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(2.4)
+epimesofluor <- ggplot(alltaxaranges[alltaxaranges$taxa_nsamplestotal > 1,], aes(x = classification, y = fluorrange)) + 
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black")  + 
+  ylab("Range (\U003BCg L<sup>-1</sup>)")+
+  theme(axis.title.y = element_markdown(),
+        plot.title = element_markdown())+ 
+  ggtitle("Chl-a range")+ 
+  xlab(NULL) + 
+  #stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 2.6, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+epimesofluor
+
+testres_ph <- dunnTest(oxyrange ~ classification,
+                       data=alltaxaranges[!is.na(alltaxaranges$Diet),],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(300)
+epimesooxy <- ggplot(alltaxaranges[alltaxaranges$taxa_nsamplestotal > 1,], aes(x = classification, y = oxyrange)) + 
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black")  + 
+  ylab(expression(Range~(µmol~kg^-1))) + 
+  xlab(NULL) + 
+  ggtitle("Oxygen")+ 
+  # stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 325, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+epimesooxy
+
+strata_provinces <- ggplot(alltaxaranges, aes(x = classification, y = nstations, group = classification)) + 
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  ylab("Provinces (N)") + 
+  xlab(NULL) + 
+  # theme(text = element_text(size = 9),
+  #       plot.title = element_text(size = 10))   +
+  stat_compare_means(method = "kruskal.test", method.args= list(alternative = "two.sided"), label.y = 3.4, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+ylim(0.5,3.6)
+
+
+# epimesosal <- ggplot(alltaxaranges[alltaxaranges$taxa_nsamplestotal > 1,], aes(x = classification, y = salrange)) + 
+#   geom_jitter(width = 0.3) +
+#   geom_violin(alpha=0.3) +
+#     theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+#   ylab("Salinity range") + 
+#   xlab(NULL) + 
+#   ggtitle("Stratum")+ 
+#   geom_hline(yintercept = mean(alltaxaranges$temprange), linetype = 2)+ # Add horizontal line at base mean
+#   stat_compare_means(method = "wilcox.test", label.y = 2.25)+        # Add global annova p-value
+#   stat_compare_means(label = "p.signif", method = "t.test",
+#                      ref.group = ".all.", label.y = 2)   
+# 
+# 
+
+plots <- ggarrange(epimesotemp + ylim(0,23) + ggtitle("Temperature range"), epimesofluor + ylim(0,2.8) + ggtitle("Chl-a range") +
+                     theme(plot.title = element_markdown()) , epimesooxy + ylim(0,350) + ggtitle("Oxygen range"),  ncol = 3, nrow = 1, align = "hv", labels = "auto")
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/Epi_Meso_EnviroRanges.pdf", height =3, width = 6.5)
+plots
+dev.off()
+
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/Epi_Meso_EnviroRanges.jpeg", height =3, width = 6.5, unit = "in", quality = 100, res = 300 )
+plots
+dev.off()
+```
+
+
+
+## environmental range and number of stations of epi and meso
+
+
+```{r epi and meso}
+#taxawithatleast10 <- names(table(alltaxaranges$Class))[table(alltaxaranges$Class) > 10]
+#together_taxtable_atleast10 <- alltaxaranges[alltaxaranges$Class %in% taxawithatleast10,]
+#together_taxtable_atleast10 <- together_taxtable_atleast10[together_taxtable_atleast10$Class == "Hexanauplia",]
+#taxawithatleast10 <- names(table(together_taxtable_atleast10$Family))[table(together_taxtable_atleast10$Family) > 10]
+#together_taxtable_atleast10 <- together_taxtable_atleast10[together_taxtable_atleast10$Family %in% taxawithatleast10,]
+alltaxaranges$nstations_fac <- as.factor(alltaxaranges$nstations)
+
+testres <- kruskal.test(temprange ~ nstations_fac, alltaxaranges[alltaxaranges$classification == "Epipelagic" & alltaxaranges$taxa_nsamplestotal > 1,])
+testres
+testres_ph <- dunnTest(temprange ~ nstations_fac, alltaxaranges[alltaxaranges$classification == "Epipelagic" & alltaxaranges$taxa_nsamplestotal > 1,],
+                       method="bonferroni")
+testres_ph
+testres_ph$res[testres_ph$res$P.adj < 0.05,]
+
+
+testres <- kruskal.test(oxyrange ~ nstations_fac, alltaxaranges[alltaxaranges$classification == "Epipelagic" & alltaxaranges$taxa_nsamplestotal > 1,])
+testres
+testres_ph <- dunnTest(oxyrange ~ nstations_fac, alltaxaranges[alltaxaranges$classification == "Epipelagic" & alltaxaranges$taxa_nsamplestotal > 1,],
+                       method="bonferroni")
+testres_ph
+testres_ph$res[testres_ph$res$P.adj < 0.05,]
+
+
+testres <- kruskal.test(fluorrange ~ nstations_fac, alltaxaranges[alltaxaranges$classification == "Epipelagic" & alltaxaranges$taxa_nsamplestotal > 1,])
+testres
+testres_ph <- dunnTest(fluorrange ~ nstations_fac, alltaxaranges[alltaxaranges$classification == "Epipelagic" & alltaxaranges$taxa_nsamplestotal > 1,],
+                       method="bonferroni")
+testres_ph
+testres_ph$res[testres_ph$res$P.adj < 0.05,]
+
+
+testres <- kruskal.test(salrange ~ nstations_fac, alltaxaranges[alltaxaranges$classification == "Epipelagic" & alltaxaranges$taxa_nsamplestotal > 1,])
+testres
+testres_ph <- dunnTest(salrange ~ nstations_fac, alltaxaranges[alltaxaranges$classification == "Epipelagic" & alltaxaranges$taxa_nsamplestotal > 1,],
+                       method="bonferroni")
+testres_ph
+testres_ph$res[testres_ph$res$P.adj < 0.05,]
+
+## 
+
+testres <- kruskal.test(temprange ~ nstations_fac, alltaxaranges[alltaxaranges$classification == "Mesopelagic" & alltaxaranges$taxa_nsamplestotal > 1,])
+testres
+testres_ph <- dunnTest(temprange ~ nstations_fac, alltaxaranges[alltaxaranges$classification == "Mesopelagic" & alltaxaranges$taxa_nsamplestotal > 1,],
+                       method="bonferroni")
+testres_ph
+testres_ph$res[testres_ph$res$P.adj < 0.05,]
+
+
+testres <- kruskal.test(oxyrange ~ nstations_fac, alltaxaranges[alltaxaranges$classification == "Mesopelagic" & alltaxaranges$taxa_nsamplestotal > 1,])
+testres
+testres_ph <- dunnTest(oxyrange ~ nstations_fac, alltaxaranges[alltaxaranges$classification == "Mesopelagic" & alltaxaranges$taxa_nsamplestotal > 1,],
+                       method="bonferroni")
+testres_ph
+testres_ph$res[testres_ph$res$P.adj < 0.05,]
+
+
+testres <- kruskal.test(fluorrange ~ nstations_fac, alltaxaranges[alltaxaranges$classification == "Mesopelagic" & alltaxaranges$taxa_nsamplestotal > 1,])
+testres
+testres_ph <- dunnTest(fluorrange ~ nstations_fac, alltaxaranges[alltaxaranges$classification == "Mesopelagic" & alltaxaranges$taxa_nsamplestotal > 1,],
+                       method="bonferroni")
+testres_ph
+testres_ph$res[testres_ph$res$P.adj < 0.05,]
+
+
+testres <- kruskal.test(salrange ~ nstations_fac, alltaxaranges[alltaxaranges$classification == "Mesopelagic" & alltaxaranges$taxa_nsamplestotal > 1,])
+testres
+testres_ph <- dunnTest(salrange ~ nstations_fac, alltaxaranges[alltaxaranges$classification == "Mesopelagic" & alltaxaranges$taxa_nsamplestotal > 1,],
+                       method="bonferroni")
+testres_ph
+testres_ph$res[testres_ph$res$P.adj < 0.05,]
+
+##plots
+# vs temp range
+testres_ph <- dunnTest(temprange ~ nstations_fac, alltaxaranges[alltaxaranges$classification == "Epipelagic" &alltaxaranges$taxa_nsamplestotal > 1,],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(19, 21)
+stationstemp_epi <- ggplot(alltaxaranges[alltaxaranges$classification == "Epipelagic" &alltaxaranges$taxa_nsamplestotal > 1,], aes(x = nstations_fac, y = temprange)) + 
+  geom_jitter(width = 0.2, height = 0, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5)) + 
+  ylab(expression(Range~(degree*C))) + 
+  xlab(NULL) + 
+  ggtitle("Temperature, Epipelagic")+ 
+  stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 23,
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+stationstemp_epi
+
+testres_ph <- dunnTest(fluorrange ~ nstations_fac,
+                       data=alltaxaranges[alltaxaranges$classification == "Epipelagic" &alltaxaranges$taxa_nsamplestotal > 1,],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(2.5, 2.7)
+stationsfluor_epi <- ggplot(alltaxaranges[alltaxaranges$classification == "Epipelagic" &alltaxaranges$taxa_nsamplestotal > 1,], aes(x = nstations_fac, y = fluorrange)) + 
+  geom_jitter(width = 0.2, height = 0, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5)) + 
+  ylab("Range (\U003BCg L<sup>-1</sup>)")+
+  theme(axis.title.y = element_markdown(),
+        plot.title = element_markdown())+ 
+  xlab(NULL) + 
+  ggtitle("Chl-a, Epipelagic")+ 
+  stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 2.9, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+stationsfluor_epi
+
+testres_ph <- dunnTest(oxyrange ~ nstations_fac,
+                       data=alltaxaranges[alltaxaranges$classification == "Epipelagic" &alltaxaranges$taxa_nsamplestotal > 1,],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(300, 325)
+stationsoxy_epi <- ggplot(alltaxaranges[alltaxaranges$classification == "Epipelagic" &alltaxaranges$taxa_nsamplestotal > 1,], aes(x = nstations_fac, y = oxyrange)) + 
+  geom_jitter(width = 0.2, height = 0, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5)) + 
+  ylab(expression(Range~(µmol~kg^-1))) + 
+  xlab(NULL) + 
+  ggtitle("Oxygen, Epipelagic")+ 
+  stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 350, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+stationsoxy_epi
+
+testres_ph <- dunnTest(salrange ~ nstations_fac,
+                       data=alltaxaranges[alltaxaranges$classification == "Epipelagic" &alltaxaranges$taxa_nsamplestotal > 1,],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+#nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(2.1, 2.3)
+stationssal_epi <- ggplot(alltaxaranges[alltaxaranges$classification == "Epipelagic" &alltaxaranges$taxa_nsamplestotal > 1,], aes(x = nstations_fac, y = salrange)) +
+  geom_jitter(width = 0.2, height = 0, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5)) +
+  ylab("Range") +
+  xlab(NULL) +
+  ggtitle("Salinity, Epipelagic")+
+  stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 2.5, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+stationssal_epi
+
+####### 
+
+testres_ph <- dunnTest(temprange ~ nstations_fac, alltaxaranges[alltaxaranges$classification == "Mesopelagic" &alltaxaranges$taxa_nsamplestotal > 1,],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+#nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+#nsamples_posthoc$ypos <- c(19)
+stationstemp_meso <- ggplot(alltaxaranges[alltaxaranges$classification == "Mesopelagic" &alltaxaranges$taxa_nsamplestotal > 1,], aes(x = nstations_fac, y = temprange)) + 
+  geom_jitter(width = 0.2, height = 0, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5)) + 
+  ylab(expression(Range~(degree*C))) + 
+  xlab(NULL) + 
+  ggtitle("Temperature, Mesopelagic")+ 
+  # stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 19,
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+stationstemp_meso
+
+testres_ph <- dunnTest(fluorrange ~ nstations_fac,
+                       data=alltaxaranges[alltaxaranges$classification == "Mesopelagic" &alltaxaranges$taxa_nsamplestotal > 1,],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(2.5)
+stationsfluor_meso <- ggplot(alltaxaranges[alltaxaranges$classification == "Mesopelagic" &alltaxaranges$taxa_nsamplestotal > 1,], aes(x = nstations_fac, y = fluorrange)) + 
+  geom_jitter(width = 0.2, height = 0, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5)) + 
+  ylab("Range (\U003BCg L<sup>-1</sup>)")+
+  theme(axis.title.y = element_markdown(),
+        plot.title = element_markdown())+ 
+  xlab(NULL) + 
+  ggtitle("Chl-a, Mesopelagic")+ 
+  stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 2.7, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+stationsfluor_meso
+
+testres_ph <- dunnTest(oxyrange ~ nstations_fac,
+                       data=alltaxaranges[alltaxaranges$classification == "Mesopelagic" &alltaxaranges$taxa_nsamplestotal > 1,],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(300, 325)
+stationsoxy_meso <- ggplot(alltaxaranges[alltaxaranges$classification == "Mesopelagic" &alltaxaranges$taxa_nsamplestotal > 1,], aes(x = nstations_fac, y = oxyrange)) + 
+  geom_jitter(width = 0.2, height = 0, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5)) + 
+  ylab(expression(Range~(µmol~kg^-1))) + 
+  xlab(NULL) + 
+  ggtitle("Oxygen, Mesopelagic")+ 
+  stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 350,  
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+stationsoxy_meso
+
+testres_ph <- dunnTest(salrange ~ nstations_fac,
+                       data=alltaxaranges[alltaxaranges$classification == "Mesopelagic" &alltaxaranges$taxa_nsamplestotal > 1,],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+#nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(2.1, 2.3)
+stationssal_meso <- ggplot(alltaxaranges[alltaxaranges$classification == "Mesopelagic" &alltaxaranges$taxa_nsamplestotal > 1,], aes(x = nstations_fac, y = salrange)) +
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5)) +
+  ylab("Range") +
+  xlab(NULL) +
+  ggtitle("Salinity, Mesopelagic")+
+  stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 2.5,  
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+stationssal_meso
+
+
+
+
+epiplots <- ggarrange(stationstemp_epi + ylim(0,23), stationsfluor_epi + ylim(0,3.1), stationsoxy_epi + ylim(0,370), stationssal_epi + ylim(0,2.8), ncol = 4, nrow = 1, align = "hv", labels = "auto")
+plots <- annotate_figure(plots, bottom = text_grob("Provinces (N)"))
+
+mesoplots <- ggarrange(stationstemp_meso+ ylim(0,23), stationsfluor_meso + ylim(0,3.1), stationsoxy_meso + ylim(0,370), stationssal_meso + ylim(0,2.8), ncol = 4, nrow = 1, align = "hv", labels = "auto")
+plots <- annotate_figure(plots, bottom = text_grob("Provinces (N)"))
+
+epiandmesoplots <- ggarrange(stationstemp_epi + ylim(0,23), stationsfluor_epi + ylim(0,3.1), stationsoxy_epi + ylim(0,370), stationssal_epi + ylim(0,2.8),stationstemp_meso + ylim(0,23), stationsfluor_meso + ylim(0,3.1), stationsoxy_meso + ylim(0,370), stationssal_meso + ylim(0,2.8), ncol = 4, nrow = 2, align = "hv", labels = "auto")
+epiandmesoplots <- annotate_figure(epiandmesoplots, bottom = text_grob("Provinces (N)"))
+epiandmesoplots
+
+epiandmesoplots3 <- ggarrange(stationstemp_epi + ylim(0,24), stationsfluor_epi + ylim(0,3.1), stationsoxy_epi + ylim(0,370), stationstemp_meso + ylim(0,21), stationsfluor_meso + ylim(0,3), stationsoxy_meso + ylim(0,370), ncol = 3, nrow = 2, align = "hv", labels = "auto")
+epiandmesoplots3 <- annotate_figure(epiandmesoplots3, bottom = text_grob("Provinces (N)"))
+epiandmesoplots3
+
+epiandmesowithsharedlables <- ggarrange(stationstemp_epi + ylim(0,24) + ggtitle(NULL), 
+                                        stationsfluor_epi + ylim(0,3.1)+ ggtitle(NULL), 
+                                        stationsoxy_epi + ylim(0,370)+ ggtitle(NULL), 
+                                        stationstemp_meso + ylim(0,21)+ ggtitle(NULL), 
+                                        stationsfluor_meso + ylim(0,3)+ ggtitle(NULL), 
+                                        stationsoxy_meso + ylim(0,370)+ ggtitle(NULL), 
+                                        ncol = 3, nrow = 2, align = "hv", labels = "auto")
+epiandmesowithsharedlables <- annotate_figure(epiandmesowithsharedlables, left = text_grob("  Mesopelagic                            Epipelagic", rot = 90))
+
+
+epiandmesowithsharedlables <- annotate_figure(epiandmesowithsharedlables, top = text_grob("                  Temperature                              Chl-a                                 Oxygen        "))
+
+epiandmesowithsharedlables
+
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/EpiMesoNstations.pdf", height =4.5, width = 6.5)
+epiandmesowithsharedlables
+dev.off()
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/EpiMesoNstations.jpeg", height =4.5, width = 6.5, unit = "in", quality = 100, res = 300 )
+epiandmesowithsharedlables
+dev.off()
+
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/epiandmeso_nstations_observedenviroranges_sig.pdf", height =6.5, width = 10)
+epiandmesoplots
+dev.off()
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/epiandmeso_nstations_observedenviroranges_sig.jpeg", height =6.5, width = 10, unit = "in", quality = 100, res = 300 )
+epiandmesoplots
+dev.off()
+
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/epiandmeso_nstations_observedenviroranges_nosal.pdf", height =6.2, width = 8.5)
+epiandmesoplots3
+dev.off()
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/epiandmeso_nstations_observedenviroranges_nosal.jpeg", height =6.2, width = 8.5, unit = "in", quality = 100, res = 300 )
+epiandmesoplots3
+dev.off()
+
+```
+
+
+##epi and meso ranges subset by N
+
+
+```{r}
+
+
+##plots
+# vs temp range
+# testres_ph <- dunnTest(temprange ~ nstations_fac, alltaxaranges[alltaxaranges$taxa_nsamplestotal > 1,],
+#                        method="bonferroni")
+# nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+# nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+# nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+# nsamples_posthoc$P.adj.sig <- NA
+# nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+# nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+# nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+# nsamples_posthoc$ypos <- c(19, 21)
+stationstemp_epiandmeso <- ggplot(alltaxaranges[alltaxaranges$taxa_nsamplestotal > 1,], aes(x = nstations_fac, y = temprange)) + 
+  geom_jitter(width = 0.2, height = 0, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black", 
+               size = 2,
+               alpha = 0.7) + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5)) + 
+  ylab(expression(Range~(degree*C))) + 
+  xlab(NULL) + 
+  ggtitle("Temperature")+ 
+  #stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 25.5,
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns")))  + 
+  geom_pwc(method = "dunn.test",
+           label = "p.adj.signif", 
+           hide.ns = T, 
+           symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns")),
+           tip.length = 0.01,
+           bracket.nudge.y = 0.04,
+           vjust = 0.5) +
+  facet_wrap(.~classification)+ 
+  theme(strip.background = element_rect(fill="white"), 
+        strip.text.x = element_text(size = 8),
+        plot.title = element_text(size = 11))
+stationstemp_epiandmeso
+
+
+
+# testres_ph <- dunnTest(fluorrange ~ nstations_fac,
+#                        data=alltaxaranges[alltaxaranges$taxa_nsamplestotal > 1,],
+#                        method="bonferroni")
+# nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+# nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+# nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+# nsamples_posthoc$P.adj.sig <- NA
+# nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+# nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+# nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+# nsamples_posthoc$ypos <- c(2.5, 2.7)
+stationsfluor_epiandmeso <- ggplot(alltaxaranges[alltaxaranges$taxa_nsamplestotal > 1,], aes(x = nstations_fac, y = fluorrange)) + 
+  geom_jitter(width = 0.2, height = 0, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black", 
+               size = 2,
+               alpha = 0.7) + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5)) + 
+  ylab("Range (\U003BCg L<sup>-1</sup>)")+
+  theme(axis.title.y = element_markdown())+
+  xlab(NULL) + 
+  ggtitle("Chl-a")+ 
+  #stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 3.13, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) +
+  
+  geom_pwc(method = "dunn.test",
+           label = "p.adj.signif", 
+           hide.ns = T, 
+           symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns")),
+           tip.length = 0.01,
+           bracket.nudge.y = 0.04,
+           vjust = 0.5) +
+  facet_wrap(.~classification)+ 
+  theme(strip.background = element_rect(fill="white"), 
+        strip.text.x = element_text(size = 8),
+        plot.title = element_text(size = 11))
+stationsfluor_epiandmeso
+
+
+
+
+# testres_ph <- dunnTest(oxyrange ~ nstations_fac,
+#                        data=alltaxaranges[alltaxaranges$taxa_nsamplestotal > 1,],
+#                        method="bonferroni")
+# nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+# nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+# nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+# nsamples_posthoc$P.adj.sig <- NA
+# nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+# nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+# nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+# nsamples_posthoc$ypos <- c(300, 325)
+stationsoxy_epiandmeso <- ggplot(alltaxaranges[alltaxaranges$taxa_nsamplestotal > 1,], aes(x = nstations_fac, y = oxyrange)) + 
+  geom_jitter(width = 0.2, height = 0, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black", 
+               size = 2,
+               alpha = 0.7) + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5)) + 
+  ylab(expression(Range~(µmol~kg^-1))) + 
+  xlab(NULL) + 
+  ggtitle("Oxygen")+ 
+  #stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 370, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) + 
+  geom_pwc(method = "dunn.test",
+           label = "p.adj.signif", 
+           hide.ns = T, 
+           symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns")),
+           tip.length = 0.01,
+           bracket.nudge.y = 0.04,
+           vjust = 0.5) +
+  facet_wrap(.~classification)+ 
+  theme(strip.background = element_rect(fill="white"), 
+        strip.text.x = element_text(size = 8),
+        plot.title = element_text(size = 11))
+stationsoxy_epiandmeso
+
+
+
+####### 
+
+
+epiandmesoplotsfacet3 <- ggarrange(stationstemp_epiandmeso + ylim(0,26.5), 
+                                   stationsfluor_epiandmeso + ylim(0,3.3), 
+                                   stationsoxy_epiandmeso + ylim(0,390), 
+                                   ncol = 3, nrow = 1, align = "hv", labels = "auto")
+
+epiandmesoplotsfacet3 <- annotate_figure(epiandmesoplotsfacet3, bottom = text_grob("Provinces (N)"))
+
+
+epiandmesoplotsfacet3
+
+
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/NStationsEnvRangeEpiMesoFacet.pdf", height =3, width = 6.5)
+epiandmesoplotsfacet3
+dev.off()
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/NStationsEnvRangeEpiMesoFacet.jpeg", height =3, width = 6.5, unit = "in", quality = 100, res = 300 )
+epiandmesoplotsfacet3
+dev.off()
+
+
+```
+
+
+
+
+
+```{r grouped violin}
+# vs temp range
+testres_epiwithin <- dunnTest(temprange ~ nstations_fac, alltaxaranges[alltaxaranges$classification == "Epipelagic" &alltaxaranges$taxa_nsamplestotal > 1,],
+                              method="bonferroni")
+nsamples_posthocepi <- testres_epiwithin$res[testres_epiwithin$res$P.adj < 0.05,]
+nsamples_posthocepi$group1 <- sapply(strsplit(nsamples_posthocepi$Comparison, " - "), '[', 1)
+nsamples_posthocepi$group2 <- sapply(strsplit(nsamples_posthocepi$Comparison, " - "), '[', 2)
+nsamples_posthocepi$P.adj.sig <- NA
+nsamples_posthocepi$P.adj.sig[nsamples_posthocepi$P.adj < 0.05] <- "*"
+nsamples_posthocepi$P.adj.sig[nsamples_posthocepi$P.adj < 0.01] <- "**"
+nsamples_posthocepi$P.adj.sig[nsamples_posthocepi$P.adj < 0.001] <- "***"
+nsamples_posthocepi$ypos <- c(19, 21)
+
+testres_mesowithin <- dunnTest(temprange ~ nstations_fac, alltaxaranges[alltaxaranges$classification == "Mesopelagic" &alltaxaranges$taxa_nsamplestotal > 1,],
+                               method="bonferroni")
+nsamples_posthocmeso <- testres_mesowithin$res[testres_mesowithin$res$P.adj < 0.05,]
+nsamples_posthocmeso$group1 <- sapply(strsplit(nsamples_posthocmeso$Comparison, " - "), '[', 1)
+nsamples_posthocmeso$group2 <- sapply(strsplit(nsamples_posthocmeso$Comparison, " - "), '[', 2)
+nsamples_posthocmeso$P.adj.sig <- NA
+nsamples_posthocmeso$P.adj.sig[nsamples_posthocmeso$P.adj < 0.05] <- "*"
+nsamples_posthocmeso$P.adj.sig[nsamples_posthocmeso$P.adj < 0.01] <- "**"
+nsamples_posthocmeso$P.adj.sig[nsamples_posthocmeso$P.adj < 0.001] <- "***"
+nsamples_posthocmeso$ypos <- c(19, 21)
+
+epimesotempnstations <- ggplot(alltaxaranges[alltaxaranges$taxa_nsamplestotal > 1,], aes(x = classification, y = temprange, fill = nstations_fac)) + 
+  geom_point(position=position_jitterdodge(dodge.width = 0.8), aes(group = nstations_fac), alpha = 0.4, size = 0.5) +
+  #geom_jitter( alpha = 0.4, size = 0.5, position = "dodge") +
+  geom_violin(alpha=0.3, position=position_dodge(width=0.8)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black",
+               position = position_dodge(width = 0.8)) + 
+  ylab(expression(Range~(degree*C))) + 
+  xlab(NULL) + 
+  ggtitle("Temperature")+ 
+  stat_compare_means(method = "kruskal.test", label.y = 20, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) +
+  stat_compare_means(mapping = aes(x = classification, y = temprange), 
+                     inherit.aes = FALSE,
+                     method = "kruskal.test", label.y = 22, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) + 
+  geom_bracket(data = alltaxaranges, aes(x = classification, y = temprange), xmin = "Epipelagic", xmax = "Mesopelagic", y.position = 22, label = "") + 
+  scale_fill_manual(values = c("white", "white", "white")) 
+  
+  #stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  
+  epimesotempnstations
+
+testres_ph <- dunnTest(fluorrange ~ classification,
+                       data=alltaxaranges[!is.na(alltaxaranges$Diet),],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(2.4)
+epimesofluor <- ggplot(alltaxaranges[alltaxaranges$taxa_nsamplestotal > 1,], aes(x = classification, y = fluorrange)) + 
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black")  + 
+  ylab("Range (\U003BCg L<sup>-1</sup>)")+
+  theme(axis.title.y = element_markdown(),
+        plot.title = element_markdown())+ 
+  ggtitle("Chl-a range")+ 
+  xlab(NULL) + 
+  #stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 2.6, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+epimesofluor
+
+testres_ph <- dunnTest(oxyrange ~ classification,
+                       data=alltaxaranges[!is.na(alltaxaranges$Diet),],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(300)
+epimesooxy <- ggplot(alltaxaranges[alltaxaranges$taxa_nsamplestotal > 1,], aes(x = classification, y = oxyrange)) + 
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black")  + 
+  ylab(expression(Range~(µmol~kg^-1))) + 
+  xlab(NULL) + 
+  ggtitle("Oxygen")+ 
+  # stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 325, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+epimesooxy
+
+strata_provinces <- ggplot(alltaxaranges, aes(x = classification, y = nstations, group = classification)) + 
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  ylab("Provinces (N)") + 
+  xlab(NULL) + 
+  # theme(text = element_text(size = 9),
+  #       plot.title = element_text(size = 10))   +
+  stat_compare_means(method = "kruskal.test", method.args= list(alternative = "two.sided"), label.y = 3.4, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+ylim(0.5,3.6)
+
+
+# epimesosal <- ggplot(alltaxaranges[alltaxaranges$taxa_nsamplestotal > 1,], aes(x = classification, y = salrange)) + 
+#   geom_jitter(width = 0.3) +
+#   geom_violin(alpha=0.3) +
+#     theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+#   ylab("Salinity range") + 
+#   xlab(NULL) + 
+#   ggtitle("Stratum")+ 
+#   geom_hline(yintercept = mean(alltaxaranges$temprange), linetype = 2)+ # Add horizontal line at base mean
+#   stat_compare_means(method = "wilcox.test", label.y = 2.25)+        # Add global annova p-value
+#   stat_compare_means(label = "p.signif", method = "t.test",
+#                      ref.group = ".all.", label.y = 2)   
+# 
+# 
+
+plots <- ggarrange(epimesotemp + ylim(0,23) + ggtitle("Temperature range"), epimesofluor + ylim(0,2.8) + ggtitle("Chl-a range") +
+                     theme(plot.title = element_markdown()) , epimesooxy + ylim(0,350) + ggtitle("Oxygen range"),  ncol = 3, nrow = 1, align = "hv", labels = "auto")
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/Epi_Meso_EnviroRanges.pdf", height =3, width = 6.5)
+plots
+dev.off()
+
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/Epi_Meso_EnviroRanges.jpeg", height =3, width = 6.5, unit = "in", quality = 100, res = 300 )
+plots
+dev.off()
+```
+
+
+
+
+
+
+
+
+are there traits that are associated with greater environmental tolerance, or greater # of nets? 
+
+```{r epi and meso tolerances among trait states}
+testdataframe <- alltaxaranges[alltaxaranges$classification == "Epipelagic",c("temprange", "Diet", "FeedingBehavior", "Spawning", "AsexualRepro", "Carbon", "anymigration")]
+temprangeres <- lapply(testdataframe[-1], function(x) kruskal.test(testdataframe$temprange ~ x))
+
+testdataframe <- alltaxaranges[alltaxaranges$classification == "Epipelagic",c("fluorrange", "Diet", "FeedingBehavior", "Spawning", "AsexualRepro", "Carbon", "anymigration")]
+fluorrangeres <- lapply(testdataframe[-1], function(x) kruskal.test(testdataframe$fluorrange ~ x))
+
+testdataframe <- alltaxaranges[alltaxaranges$classification == "Epipelagic",c("oxyrange", "Diet", "FeedingBehavior", "Spawning", "AsexualRepro", "Carbon", "anymigration")]
+oxyrangeres <- lapply(testdataframe[-1], function(x) kruskal.test(testdataframe$oxyrange ~ x))
+
+testdataframe <- alltaxaranges[alltaxaranges$classification == "Epipelagic",c("salrange", "Diet", "FeedingBehavior", "Spawning", "AsexualRepro", "Carbon", "anymigration")]
+salrangeres <- lapply(testdataframe[-1], function(x) kruskal.test(testdataframe$salrange ~ x))
+
+epipvals <- sapply(temprangeres, "[[", 3)  
+epipvals <- rbind(epipvals, sapply(fluorrangeres, "[[", 3) )
+epipvals <- rbind(epipvals, sapply(oxyrangeres, "[[", 3) )
+epipvals <- rbind(epipvals, sapply(salrangeres, "[[", 3) )
+rownames(epipvals) <- c("EpiTemp", "EpiFluor", "EpiOxy", "EpiSal")
+
+
+testdataframe <- alltaxaranges[alltaxaranges$classification == "Mesopelagic",c("temprange", "Diet", "FeedingBehavior", "Spawning", "AsexualRepro", "Carbon", "anymigration")]
+temprangeres <- lapply(testdataframe[-1], function(x) kruskal.test(testdataframe$temprange ~ x))
+
+testdataframe <- alltaxaranges[alltaxaranges$classification == "Mesopelagic",c("fluorrange", "Diet", "FeedingBehavior", "Spawning", "AsexualRepro", "Carbon", "anymigration")]
+fluorrangeres <- lapply(testdataframe[-1], function(x) kruskal.test(testdataframe$fluorrange ~ x))
+
+testdataframe <- alltaxaranges[alltaxaranges$classification == "Mesopelagic",c("oxyrange", "Diet", "FeedingBehavior", "Spawning", "AsexualRepro", "Carbon", "anymigration")]
+oxyrangeres <- lapply(testdataframe[-1], function(x) kruskal.test(testdataframe$oxyrange ~ x))
+
+testdataframe <- alltaxaranges[alltaxaranges$classification == "Mesopelagic",c("salrange", "Diet", "FeedingBehavior", "Spawning", "AsexualRepro", "Carbon", "anymigration")]
+salrangeres <- lapply(testdataframe[-1], function(x) kruskal.test(testdataframe$salrange ~ x))
+
+mesopvals <- sapply(temprangeres, "[[", 3)  
+mesopvals <- rbind(mesopvals, sapply(fluorrangeres, "[[", 3) )
+mesopvals <- rbind(mesopvals, sapply(oxyrangeres, "[[", 3) )
+mesopvals <- rbind(mesopvals, sapply(salrangeres, "[[", 3) )
+rownames(mesopvals) <- c("MesoTemp", "MesoFluor", "MesoOxy", "MesoSal")
+
+
+epipvals
+epipvals < 0.05
+
+mesopvals
+mesopvals < 0.05
+
+
+
+testdataframe <- alltaxaranges[,c("temprange", "Diet", "FeedingBehavior", "Spawning", "AsexualRepro", "Carbon", "anymigration")]
+temprangeres_all <- lapply(testdataframe[-1], function(x) kruskal.test(testdataframe$temprange ~ x))
+
+testdataframe <- alltaxaranges[,c("fluorrange", "Diet", "FeedingBehavior", "Spawning", "AsexualRepro", "Carbon", "anymigration")]
+fluorrangeres_all <- lapply(testdataframe[-1], function(x) kruskal.test(testdataframe$fluorrange ~ x))
+
+testdataframe <- alltaxaranges[,c("oxyrange", "Diet", "FeedingBehavior", "Spawning", "AsexualRepro", "Carbon", "anymigration")]
+oxyrangeres_all <- lapply(testdataframe[-1], function(x) kruskal.test(testdataframe$oxyrange ~ x))
+
+testdataframe <- alltaxaranges[,c("salrange", "Diet", "FeedingBehavior", "Spawning", "AsexualRepro", "Carbon", "anymigration")]
+salrangeres_all <- lapply(testdataframe[-1], function(x) kruskal.test(testdataframe$salrange ~ x))
+
+allpvals <- sapply(temprangeres_all, "[[", 3)  
+allpvals <- rbind(allpvals, sapply(fluorrangeres_all, "[[", 3) )
+allpvals <- rbind(allpvals, sapply(oxyrangeres_all, "[[", 3) )
+allpvals <- rbind(allpvals, sapply(salrangeres_all, "[[", 3) )
+rownames(allpvals) <- c("Temp", "Fluor", "Oxy", "Sal")
+
+
+allpvals
+allpvals < 0.05
+
+
+
+
+```
+
+
+within epi and meso, are there traits that are associated with larger spatial extent?  (i.e. dvm > more stations)
+```{r}
+testdataframe <- alltaxaranges[alltaxaranges$classification == "Epipelagic",c("nstations", "Diet", "FeedingBehavior", "Spawning", "AsexualRepro", "Carbon", "anymigration")]
+stationsrangeres_epi <- lapply(testdataframe[-1], function(x) kruskal.test(testdataframe$nstations ~ x))
+
+testdataframe <- alltaxaranges[alltaxaranges$classification == "Mesopelagic",c("nstations", "Diet", "FeedingBehavior", "Spawning", "AsexualRepro", "Carbon", "anymigration")]
+stationsrangeres_meso <- lapply(testdataframe[-1], function(x) kruskal.test(testdataframe$nstations ~ x))
+
+pvalstraitsnum_epi <- sapply(stationsrangeres_epi, "[[", 3)  
+pvalstraitsnum_meso <- sapply(stationsrangeres_meso, "[[", 3)  
+pvalstraitsnum <- rbind(pvalstraitsnum_epi, pvalstraitsnum_meso )
+rownames(pvalstraitsnum) <- c("Epi", "Meso")
+pvalstraitsnum
+pvalstraitsnum < 0.05
+
+```
+
+
+#Epipelagic: 
+asex repro on fluor; provinces
+carbon on provinces;
+
+
+#Mesopelagic: 
+diet on fluor, oxy; 
+feeding behavior on oxy; provinces
+
+
+#Total: 
+migration on all three enviro; provinces 
+
+
+#plot significant traits:
+
+epi: asex repro on fluor; provinces
+```{r plot epipelagic asexual repro}
+#asexual vs fluor range
+testres_ph <- dunnTest(fluorrange ~ AsexualRepro,
+                       data=alltaxaranges[alltaxaranges$classification == "Epipelagic" & !is.na(alltaxaranges$AsexualRepro),],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(2.4)
+epi_asex_fluor <- ggplot(alltaxaranges[alltaxaranges$classification == "Epipelagic"& !is.na(alltaxaranges$AsexualRepro),], aes(x = AsexualRepro, y = fluorrange)) + 
+  geom_jitter(width = 0.2, height = 0, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  # scale_y_log10()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  ylab("Range (\U003BCg L<sup>-1</sup>)")+
+  theme(axis.title.y = element_markdown(),
+        plot.title = element_markdown())+ 
+  xlab("Asexual reproduction") + 
+  ggtitle("Chl-a range")+ 
+  ylim(0,3)+
+  # stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 2.5, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+epi_asex_fluor
+
+
+#asexual vs provinces
+testres_ph <- dunnTest(nstations ~ AsexualRepro,
+                       data=alltaxaranges[!is.na(alltaxaranges$AsexualRepro) & alltaxaranges$classification == "Epipelagic",],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(3.3)
+
+epi_asex_provinces <- ggplot(alltaxaranges[!is.na(alltaxaranges$AsexualRepro) & alltaxaranges$classification == "Epipelagic",], aes(x = AsexualRepro, y = nstations, group = AsexualRepro)) + 
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  ylab("Provinces (N)") + 
+  xlab("Asexual reproduction") + 
+  ylim(1,4.1) + 
+  ggtitle("Distributional range")+ 
+  #stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 3.6, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+epi_asex_provinces
+```
+
+epi: carbon on provinces;
+```{r plot epipelagic carbon}
+#carbon vs provinces
+testres_ph <- dunnTest(nstations ~ Carbon,
+                       data=alltaxaranges[!is.na(alltaxaranges$Carbon) & alltaxaranges$classification == "Epipelagic",],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(3.3, 3.6)
+
+epi_carbon_provinces <- ggplot(alltaxaranges[!is.na(alltaxaranges$Carbon) & alltaxaranges$classification == "Epipelagic",], aes(x = Carbon, y = nstations, group = Carbon)) + 
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  ylab("Provinces (N)") + 
+  xlab("Body carbon composition") + 
+  ylim(1,4.1)+
+  ggtitle("Distributional range")+ 
+  stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 3.9, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+epi_carbon_provinces
+```
+
+
+meso: diet on fluor, oxy; 
+```{r}
+#diet vs oxy range
+testres_ph <- dunnTest(oxyrange ~ Diet,
+                       data=alltaxaranges[!is.na(alltaxaranges$Diet) & alltaxaranges$classification == "Mesopelagic",],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(300)
+nsamples_posthoc <- nsamples_posthoc[,c("group1", "group2", "P.adj", "P.adj.sig", "ypos")]
+meso_diet_oxy <- ggplot(alltaxaranges[!is.na(alltaxaranges$Diet) & alltaxaranges$classification == "Mesopelagic",], aes(x = Diet, y = oxyrange)) +
+  geom_jitter(width = 0.2, height = 0, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ylab("Range<br>(\U003BCmol kg<sup>-1</sup>)")+
+  theme(axis.title.y = element_markdown(),
+        plot.title = element_markdown())+ 
+  xlab("Diet") +
+  ylim(0,340) +
+  ggtitle("Oxygen<br>range")+
+  stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 310, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+meso_diet_oxy
+
+
+#diet vs fluor range
+testres_ph <- dunnTest(fluorrange ~ Diet,
+                       data=alltaxaranges[!is.na(alltaxaranges$Diet) & alltaxaranges$classification == "Mesopelagic",],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(2.4)
+meso_diet_fluor <- ggplot(alltaxaranges[!is.na(alltaxaranges$Diet) & alltaxaranges$classification == "Mesopelagic",], aes(x = Diet, y = fluorrange)) + 
+  geom_jitter(width = 0.2, height = 0, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  # scale_y_log10()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_markdown()) + 
+  ylab("Range<br>(\U003BCg L<sup>-1</sup>)")+
+  theme(axis.title.y = element_markdown(),
+        plot.title = element_markdown())+ 
+  xlab("Diet") + 
+  ggtitle("Chl-a<br>range")+ 
+  ylim(0,2.8) +
+  stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 2.5, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+meso_diet_fluor
+
+
+```
+
+
+meso: feeding behavior on oxy; provinces
+```{r}
+#feeding vs oxy range
+testres_ph <- dunnTest(oxyrange ~ FeedingBehavior,
+                       data=alltaxaranges[!is.na(alltaxaranges$FeedingBehavior) & alltaxaranges$classification == "Mesopelagic",],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(300)
+nsamples_posthoc <- nsamples_posthoc[,c("group1", "group2", "P.adj", "P.adj.sig", "ypos")]
+meso_feeding_oxy <- ggplot(alltaxaranges[!is.na(alltaxaranges$FeedingBehavior) & alltaxaranges$classification == "Mesopelagic",], aes(x = FeedingBehavior, y = oxyrange)) +
+  geom_jitter(width = 0.2, height = 0, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ylab("Range<br>(\U003BCmol kg<sup>-1</sup>)")+
+  theme(axis.title.y = element_markdown(),
+        plot.title = element_markdown(),
+        axis.title.x = element_markdown())+ 
+  xlab("Feeding<br>strategy") +
+  ylim(0,340) + 
+  ggtitle("Oxygen<br>range")+
+  stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 310, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+meso_feeding_oxy
+
+
+#feeding vs provinces
+testres_ph <- dunnTest(nstations ~ FeedingBehavior,
+                       data=alltaxaranges[!is.na(alltaxaranges$FeedingBehavior) & alltaxaranges$classification == "Mesopelagic",],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(3.3, 3.6)
+
+meso_feeding_provinces <- ggplot(alltaxaranges[!is.na(alltaxaranges$FeedingBehavior) & alltaxaranges$classification == "Mesopelagic",], aes(x = FeedingBehavior, y = nstations, group = FeedingBehavior)) + 
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_markdown(),
+        axis.title.x = element_markdown()) + 
+  ylab("Provinces (N)") + 
+  xlab("Feeding<br>strategy") + 
+  ylim(1,4.1) + 
+  ggtitle("Distributional<br>range")+ 
+  stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 3.9, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+meso_feeding_provinces
+
+
+```
+
+
+
+overall: migration on all enviro; provinces
+```{r}
+#dvm vs range of temp
+testres_ph <- dunnTest(temprange ~ anymigration,
+                       data=alltaxaranges[!is.na(alltaxaranges$anymigration),],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(20)
+nsamples_posthoc <- nsamples_posthoc[,c("group1", "group2", "P.adj", "P.adj.sig", "ypos")]
+total_mig_temp <- ggplot(alltaxaranges[!is.na(alltaxaranges$anymigration),], aes(x = anymigration, y = temprange)) +
+  geom_jitter(width = 0.2, height = 0, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") +
+  ylab("Range<br>(\u00B0C)") + 
+  xlab("DVM") +
+  scale_x_discrete(labels=c("Yes", "No")) +
+  ylim(0,24) + 
+  ggtitle("Temperature<br>range")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.y = element_markdown(),
+        plot.title = element_markdown()) +
+  # stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 22, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+total_mig_temp
+
+#dvm vs oxy range
+testres_ph <- dunnTest(oxyrange ~ anymigration,
+                       data=alltaxaranges[!is.na(alltaxaranges$anymigration),],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(300)
+nsamples_posthoc <- nsamples_posthoc[,c("group1", "group2", "P.adj", "P.adj.sig", "ypos")]
+total_mig_oxy <- ggplot(alltaxaranges[!is.na(alltaxaranges$anymigration),], aes(x = anymigration, y = oxyrange)) +
+  geom_jitter(width = 0.2, height = 0, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ylab("Range<br>(\U003BCmol kg<sup>-1</sup>)")+
+  theme(axis.title.y = element_markdown(),
+        plot.title = element_markdown())+ 
+  xlab("DVM") +
+  scale_x_discrete(labels=c("Yes", "No")) +
+  ylim(0,340) + 
+  ggtitle("Oxygen<br>range")+
+  #stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 320, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+total_mig_oxy
+
+
+#dvm vs fluor range
+testres_ph <- dunnTest(fluorrange ~ anymigration,
+                       data=alltaxaranges[!is.na(alltaxaranges$anymigration),],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(2.4)
+total_mig_fluor <- ggplot(alltaxaranges[!is.na(alltaxaranges$anymigration),], aes(x = anymigration, y = fluorrange)) + 
+  geom_jitter(width = 0.2, height = 0, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  # scale_y_log10()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.y = element_markdown(),
+        plot.title = element_markdown())+ 
+  ylab("Range<br>(\U003BCg L<sup>-1</sup>)")+
+  xlab("DVM") +
+  scale_x_discrete(labels=c("Yes", "No")) +
+  ylim(0,2.8) + 
+  labs(title = "Chl-a <br>range")+ 
+  #stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 2.6, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+total_mig_fluor
+
+
+
+#dvm vs provinces
+testres_ph <- dunnTest(nstations ~ anymigration,
+                       data=alltaxaranges[!is.na(alltaxaranges$anymigration),],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(3.3)
+
+total_mig_provinces <- ggplot(alltaxaranges[!is.na(alltaxaranges$anymigration),], aes(x = anymigration, y = nstations, group = anymigration)) + 
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_markdown()) + 
+  ylab("Provinces (N)") + 
+  xlab("DVM") +
+  scale_x_discrete(labels=c("Yes", "No")) +
+  ylim(1,3.7) + 
+  ggtitle("Distributional<br>range")+ 
+  #stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 3.6, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+total_mig_provinces
+
+
+
+```
+
+
+```{r plot epipelagic}
+plots_epi <- ggarrange(epi_asex_fluor, epi_asex_provinces, epi_carbon_provinces,
+                       nrow = 1, ncol = 3, align = "hv", labels = "auto")
+plots_epi
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/epipelagic_traits_ranges.pdf", height =3, width = 6.5)
+plots_epi
+dev.off()
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/epipelagic_traits_ranges.jpeg", height =3, width = 6.5, unit = "in", quality = 100, res = 300)
+plots_epi
+dev.off()
+```
+
+
+```{r plot mesopelagic}
+plots_meso <- ggarrange(meso_diet_fluor, meso_diet_oxy, meso_feeding_oxy, meso_feeding_provinces,
+                        nrow = 1, ncol = 4, align = "hv", labels = "auto")
+plots_meso
+
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/mesopelagic_traits_ranges.pdf", height =4, width = 7)
+plots_meso
+dev.off()
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/mesopelagic_traits_ranges.jpeg", height =4, width = 7, unit = "in", quality = 100, res = 300)
+plots_meso
+dev.off()
+```
+
+
+```{r plot migration}
+plots_mig <- ggarrange(total_mig_temp, total_mig_fluor, total_mig_oxy, total_mig_provinces,
+                       nrow = 1, ncol = 4, align = "hv", labels = "auto")
+plots_mig
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/migration_traits_ranges.pdf", height =4, width = 7)
+plots_mig
+dev.off()
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/migration_traits_ranges.jpeg", height =4, width = 7, unit = "in", quality = 100, res = 300)
+plots_mig
+dev.off()
+
+```
+
+
+
+
+## Are there taxonomic groups that are more/less likely to be found in multiple stations or provinces?
+
+Which taxonomic groups are shared or different among provinces? 
+Are there taxa that are more/less likely to be found in multiple provinces?
+```{r}
+
+taxawithatleast10 <- names(table(alltaxaranges$Class))[table(alltaxaranges$Class) > 10]
+together_taxtable_atleast10 <- alltaxaranges[alltaxaranges$Class %in% taxawithatleast10,]
+together_taxtable_atleast10$Class[together_taxtable_atleast10$Class == "Hexanauplia"] <- "Copepoda"
+
+
+
+testres <- kruskal.test(taxa_nsamplestotal ~ Class, together_taxtable_atleast10[together_taxtable_atleast10$Class != "",])
+testres
+testres_ph <- dunnTest(taxa_nsamplestotal ~ Class,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Class != "",],
+                       method="bonferroni")
+testres_ph
+
+testres <- kruskal.test(nstations ~ Class, together_taxtable_atleast10[together_taxtable_atleast10$Class != "",])
+testres
+testres_ph <- dunnTest(nstations ~ Class,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Class != "",],
+                       method="bonferroni")
+testres_ph
+##plots
+
+testres_ph <- dunnTest(taxa_nsamplestotal ~ Class,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Class != "",],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(50,53,56)
+nsamples_posthoc <- nsamples_posthoc[,c("group1", "group2", "P.adj", "P.adj.sig", "ypos")]
+classsamples <- ggplot(together_taxtable_atleast10[together_taxtable_atleast10$Class != "",], aes(x = Class, y = taxa_nsamplestotal, group = Class)) +
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.6)  +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ylab("Samples (N)") +
+  xlab(NULL) +
+  ggtitle("Taxa occurring in multiple samples") +
+  stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 60, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+
+classsamples
+
+
+testres_ph <- dunnTest(nstations ~ Class,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Class != "",],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(3.3,3.6)
+nsamples_posthoc <- nsamples_posthoc[,c("group1", "group2", "P.adj", "P.adj.sig", "ypos")]
+classprovinces <- ggplot(together_taxtable_atleast10[together_taxtable_atleast10$Class != "",], aes(x = Class, y = nstations, group = Class)) +
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.6)  +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ylab("Provinces (N)") +
+  xlab(NULL) +
+  ggtitle("Taxonomic Class")+
+  stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 3.9,
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) +
+  ylim(0.5,4.1)
+classprovinces
+
+taxawithatleast10 <- names(table(alltaxaranges$Family))[table(alltaxaranges$Family) > 10]
+testres <- kruskal.test(taxa_nsamplestotal ~ Family, together_taxtable_atleast10[together_taxtable_atleast10$Class == "Copepoda" & 
+                                                                                   together_taxtable_atleast10$Family != "" &
+                                                                                   together_taxtable_atleast10$Family %in% taxawithatleast10,])
+testres
+testres <- kruskal.test(nstations ~ Family, together_taxtable_atleast10[together_taxtable_atleast10$Class == "Copepoda" & 
+                                                                          together_taxtable_atleast10$Family != "" &
+                                                                          together_taxtable_atleast10$Family %in% taxawithatleast10,])
+testres
+
+
+
+testres_ph <- dunnTest(nstations ~ Family,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Class == "Copepoda" & 
+                                                          together_taxtable_atleast10$Family != "" &
+                                                          together_taxtable_atleast10$Family %in% taxawithatleast10,],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(3.3, 3.6, 3.9)
+nsamples_posthoc <- nsamples_posthoc[,c("group1", "group2", "P.adj", "P.adj.sig", "ypos")]
+
+copepodprovinces <- ggplot(together_taxtable_atleast10[together_taxtable_atleast10$Class == "Copepoda" & 
+                                                         together_taxtable_atleast10$Family != "" &
+                                                         together_taxtable_atleast10$Family %in% taxawithatleast10,], 
+                           aes(x = Family, 
+                               y = nstations, 
+                               group = Family)) +
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.6)  +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ylab("Provinces (N)") +
+  xlab(NULL) +
+  ggtitle("Copepod Families")+
+  stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 4.2, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) +
+  ylim(0.5,4.5)
+copepodprovinces
+
+
+plots <- ggarrange(classprovinces, copepodprovinces, nrow = 2, ncol = 1, align = "hv", labels = "auto")
+plots
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/taxonomy_num_stations.pdf", height =6, width = 3)
+plots
+dev.off()
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/taxonomy_num_stations.jpeg", height =6, width = 3, unit = "in", quality = 100, res = 300)
+plots
+dev.off()
+
+
+```
+
+
+## supplemental: ranges of taxa
+## differences in environmental range among taxonomic groups
+
+```{r tolerance between classes, families}
+
+taxawithatleast10 <- names(table(alltaxaranges$Class))[table(alltaxaranges$Class) > 10]
+together_taxtable_atleast10 <- alltaxaranges[alltaxaranges$Class %in% taxawithatleast10,]
+together_taxtable_atleast10$Class[together_taxtable_atleast10$Class == "Hexanauplia"] <- "Copepoda"
+
+testres <- kruskal.test(temprange ~ Class, together_taxtable_atleast10[together_taxtable_atleast10$Class != "",])
+testres
+testres_ph <- dunnTest(temprange ~ Class,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Class != "",],
+                       method="bonferroni")
+testres_ph
+
+testres <- kruskal.test(oxyrange ~ Class, together_taxtable_atleast10[together_taxtable_atleast10$Class != "",])
+testres
+testres_ph <- dunnTest(oxyrange ~ Class,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Class != "",],
+                       method="bonferroni")
+testres_ph
+
+testres <- kruskal.test(fluorrange ~ Class, together_taxtable_atleast10[together_taxtable_atleast10$Class != "",])
+testres
+testres_ph <- dunnTest(fluorrange ~ Class,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Class != "",],
+                       method="bonferroni")
+testres_ph
+
+testres <- kruskal.test(salrange ~ Class, together_taxtable_atleast10[together_taxtable_atleast10$Class != "",])
+testres
+testres_ph <- dunnTest(salrange ~ Class,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Class != "",],
+                       method="bonferroni")
+testres_ph
+
+testres <- kruskal.test(nstations ~ Class, together_taxtable_atleast10[together_taxtable_atleast10$Class != "",])
+testres
+testres_ph <- dunnTest(nstations ~ Class,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Class != "",],
+                       method="bonferroni")
+testres_ph
+##plots
+# vs temp range
+testres_ph <- dunnTest(temprange ~ Class,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Class != "",],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(19, 21)
+epimesotemp <- ggplot(together_taxtable_atleast10[together_taxtable_atleast10$Class != "",], aes(x = Class, y = temprange)) + 
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  ylab(expression(Range~(degree*C))) + 
+  xlab(NULL) + 
+  ggtitle("Temperature")+ 
+  stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 23, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+epimesotemp
+
+testres_ph <- dunnTest(fluorrange ~ Class,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Class != "",],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+#nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+#nsamples_posthoc$ypos <- c(2.4)
+epimesofluor <- ggplot(together_taxtable_atleast10[together_taxtable_atleast10$Class != "",], aes(x = Class, y = fluorrange)) + 
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  ylab("Range (mg m<sup>-3</sup>)")+
+  theme(axis.title.y = element_markdown())+ 
+  xlab(NULL) + 
+  theme(axis.title.y = element_markdown(),
+        plot.title = element_markdown())+ 
+  ylab("Range (\U003BCg L<sup>-1</sup>)")+
+  ggtitle("Chl-a")+ 
+  #  stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 2.6,
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+epimesofluor
+
+testres_ph <- dunnTest(oxyrange ~ Class,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Class != "",],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+#nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+#nsamples_posthoc$ypos <- c(300)
+epimesooxy <- ggplot(together_taxtable_atleast10[together_taxtable_atleast10$Class != "",], aes(x = Class, y = oxyrange)) + 
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  ylab(expression(Range~(µmol~kg^-1))) + 
+  xlab(NULL) + 
+  ggtitle("Oxygen")+ 
+  #stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 325, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+epimesooxy
+
+testres_ph <- dunnTest(salrange ~ Class,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Class != "",],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+#nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+#nsamples_posthoc$ypos <- c(300)
+epimesosal <- ggplot(together_taxtable_atleast10[together_taxtable_atleast10$Class != "",], aes(x = Class, y = salrange)) +
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ylab("Range") +
+  xlab(NULL) +
+  ggtitle("Salinity")+
+  # stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 2.1, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+
+
+
+plots_classes <- ggarrange(epimesotemp + ylim(0,25), epimesofluor + ylim(0,2.8), epimesooxy + ylim(0,350), ncol = 3, nrow = 1, align = "hv", labels = "auto")
+
+
+```
+
+```{r tolerance between copepod families}
+
+taxawithatleast10 <- names(table(alltaxaranges$Class))[table(alltaxaranges$Class) > 10]
+together_taxtable_atleast10 <- alltaxaranges[alltaxaranges$Class %in% taxawithatleast10,]
+together_taxtable_atleast10 <- together_taxtable_atleast10[together_taxtable_atleast10$Class == "Hexanauplia",]
+taxawithatleast10 <- names(table(together_taxtable_atleast10$Family))[table(together_taxtable_atleast10$Family) > 10]
+together_taxtable_atleast10 <- together_taxtable_atleast10[together_taxtable_atleast10$Family %in% taxawithatleast10,]
+
+testres <- kruskal.test(temprange ~ Family, together_taxtable_atleast10[together_taxtable_atleast10$Family != "",])
+testres
+testres_ph <- dunnTest(temprange ~ Family,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Family != "",],
+                       method="bonferroni")
+testres_ph
+testres_ph$res[testres_ph$res$P.adj < 0.05,]
+
+
+testres <- kruskal.test(oxyrange ~ Family, together_taxtable_atleast10[together_taxtable_atleast10$Family != "",])
+testres
+testres_ph <- dunnTest(oxyrange ~ Family,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Family != "",],
+                       method="bonferroni")
+testres_ph
+testres_ph$res[testres_ph$res$P.adj < 0.05,]
+
+
+testres <- kruskal.test(fluorrange ~ Family, together_taxtable_atleast10[together_taxtable_atleast10$Family != "",])
+testres
+testres_ph <- dunnTest(fluorrange ~ Family,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Family != "",],
+                       method="bonferroni")
+testres_ph
+testres_ph$res[testres_ph$res$P.adj < 0.05,]
+
+
+testres <- kruskal.test(salrange ~ Family, together_taxtable_atleast10[together_taxtable_atleast10$Family != "",])
+testres
+testres_ph <- dunnTest(salrange ~ Family,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Family != "",],
+                       method="bonferroni")
+testres_ph
+testres_ph$res[testres_ph$res$P.adj < 0.05,]
+
+##plots
+# vs temp range
+testres_ph <- dunnTest(temprange ~ Family,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Family != "",],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(19, 21)
+epimesotemp <- ggplot(together_taxtable_atleast10[together_taxtable_atleast10$Family != "",], aes(x = Family, y = temprange)) + 
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  ylab(expression(Range~(degree*C))) + 
+  xlab(NULL) + 
+  ggtitle("Temperature")+ 
+  stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 23, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+epimesotemp
+
+testres_ph <- dunnTest(fluorrange ~ Family,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Family != "",],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(2.45)
+epimesofluor <- ggplot(together_taxtable_atleast10[together_taxtable_atleast10$Family != "",], aes(x = Family, y = fluorrange)) + 
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  theme(axis.title.y = element_markdown())+ 
+  xlab(NULL) + 
+  theme(axis.title.y = element_markdown(),
+        plot.title = element_markdown())+ 
+  ylab("Range (\U003BCg L<sup>-1</sup>)")+
+  ggtitle("Chl-a")+ 
+  stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 2.8, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+epimesofluor
+
+testres_ph <- dunnTest(oxyrange ~ Family,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Family != "",],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+nsamples_posthoc$ypos <- c(300)
+epimesooxy <- ggplot(together_taxtable_atleast10[together_taxtable_atleast10$Family != "",], aes(x = Family, y = oxyrange)) + 
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  ylab(expression(Range~(µmol~kg^-1))) + 
+  xlab(NULL) + 
+  ggtitle("Oxygen")+ 
+  stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 325, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+epimesooxy
+
+testres_ph <- dunnTest(salrange ~ Family,
+                       data=together_taxtable_atleast10[together_taxtable_atleast10$Family != "",],
+                       method="bonferroni")
+nsamples_posthoc <- testres_ph$res[testres_ph$res$P.adj < 0.05,]
+nsamples_posthoc$group1 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 1)
+nsamples_posthoc$group2 <- sapply(strsplit(nsamples_posthoc$Comparison, " - "), '[', 2)
+#nsamples_posthoc$P.adj.sig <- NA
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.05] <- "*"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.01] <- "**"
+nsamples_posthoc$P.adj.sig[nsamples_posthoc$P.adj < 0.001] <- "***"
+#nsamples_posthoc$ypos <- c(300)
+epimesosal <- ggplot(together_taxtable_atleast10[together_taxtable_atleast10$Family != "",], aes(x = Family, y = salrange)) +
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ylab("Range") +
+  xlab(NULL) +
+  ggtitle("Salinity")+
+  # stat_pvalue_manual(data = nsamples_posthoc, label = "P.adj.sig", y.position = "ypos", tip.length = 0.01) +
+  stat_compare_means(method = "kruskal.test", label.y = 2.1, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+
+
+
+plots_copes <- ggarrange(epimesotemp + ylim(0,25), epimesofluor + ylim(0,3), epimesooxy + ylim(0,350), ncol = 3, nrow = 1, align = "hv", labels = "auto")
+plots_copes_secondrow <- ggarrange(epimesotemp + ylim(0,25), epimesofluor + ylim(0,3), epimesooxy + ylim(0,350), ncol = 3, nrow = 1, align = "hv", labels = c("d", "e", "f"))
+
+plots <- ggarrange(plots_classes, plots_copes_secondrow, ncol = 1, nrow = 2)
+
+
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/classes+copefamilies_taxa_observedenviroranges_sig.pdf", height =6, width = 6)
+plots
+dev.off()
+
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/classes+copefamilies_taxa_observedenviroranges_sig.jpeg", height =6, width = 6, unit = "in", quality = 100, res = 300 )
+plots
+dev.off()
+```
+

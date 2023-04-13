@@ -1,0 +1,1655 @@
+---
+title: "01_Import-and-Clean-data"
+output: html_document
+date: "2023-02-16"
+---
+
+```{r load libraries, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE)
+knitr::is_latex_output()
+#output: html_document:
+#    keep_md: true
+library(phyloseq)
+library(vegan)
+library(ggplot2)
+theme_update(plot.title = element_text(hjust = 0.5))
+library(dplyr)
+library(tidyr)
+library(ggdendro)
+library(gridExtra)
+library(stringr)
+library(dendextend)
+library(Biostrings)
+library(insect)
+library(ape)
+library(seqinr)
+library(decontam)
+library(DESeq2)
+library(metagMisc)
+library(UpSetR)
+library(corncob)
+library(viridis)
+library(RColorBrewer)
+library(DESeq2)
+library(seqinr)
+library(coil)
+library(ggExtra)
+library(beepr)
+library(readxl)
+library(ggforce)
+library(ggrepel)
+library(sf)
+library(mapdata)
+library(ggpubr)
+library(FSA)
+library(cowplot)
+library(ggtext)
+set.seed(00110010)
+theme_set(theme_bw())
+theme_update(plot.title = element_text(hjust = 0.5))
+```
+
+
+```{r import COI data with MZG taxonomy}
+in_biom <- import_biom("~/Documents/Chapter2/osm_analysis/qiime2_analyses/leray_v2/exported-feature-table-nonchimerica-uchime/feature-table_json.biom", refseqfilename = "~/Documents/Chapter2/osm_analysis/qiime2_analyses/leray_v2/uchime-dn-out/Leray97_after_uchimefilter_repseqs.fasta")
+#sample_names(in_biom)
+
+md <- import_qiime_sample_data("~/Documents/Chapter2/osm_analysis/qiime2_analyses/leray_v2/leray_metadata_v1.txt") #### saved from metadata file for whole project
+in_biom <- merge_phyloseq(in_biom, md)
+
+#assigned with sklearn classifier trained on metazoogene data
+#with RDP classifier, COI, unique, confidence cutoff 0.8
+
+#taxcsv <- read.csv("~/Downloads/Leray_MZG_BBlib_taxonomy.tsv", sep="\t", header = F)
+#taxcsv <- read.csv("~/Documents/Chapter2/osm_analysis/qiime2_analyses/leray_v1/COI-midori-sklearn-taxonomy_untrimmed.tsv", sep="\t", header = F)
+#taxcsv <- read.csv("~/Documents/Chapter2/osm_analysis/qiime2_analyses/leray_v2/COI_vsearch97_classifiedwithtrimmedmzg.tsv")
+
+taxcsv <- read.csv("~/Documents/Chapter2/osm_analysis/qiime2_analyses/leray_v2/COI-mzg_trimmed_taxonomy-oct22.tsv", sep = "\t", header = F)
+taxbackup <- taxcsv
+
+taxcsv <- taxcsv[-1,]
+taxcsv <- taxcsv[-1,]
+taxonomy <- str_split_fixed(taxcsv$V2, ";", n=21)
+
+taxbackup <- taxonomy
+taxtest <- taxonomy
+
+## remove leading levels: 
+#taxtest <- lapply(taxtest, function(x) gsub(".__", "", x))
+#taxtest <- lapply(taxtest, function(x) gsub("_[0-9.]+$", "", x))
+
+#taxtest <- lapply(taxtest, function(x) gsub(".ull_", "", x))
+taxtest <- lapply(taxtest, function(x) gsub("_EXT", "", x))
+taxtest <- lapply(taxtest, function(x) gsub("_", " ", x))
+taxtest <- data.frame(matrix(unlist(taxtest), nrow=nrow(taxonomy), byrow=F),stringsAsFactors=FALSE)
+
+#taxtest <- lapply(taxtest, function(x) gsub("_[0-9]+", "", x))
+#taxtest <- data.frame(matrix(unlist(taxtest), nrow=nrow(taxonomy), byrow=F),stringsAsFactors=FALSE)
+
+
+taxonomy <- as.matrix(taxtest[,c(1, 4,5,8,9,11,12,16,18,20)])
+#taxonomy <- as.matrix(taxtest[,c(1,2,3,4,5,6,7)])
+
+
+colnames(taxonomy) <- c("Kingdom", "Phylum", "Subphylum", "Class", "Subclass", "Superorder", "Order", "Family", "Genus", "Species")
+#colnames(taxonomy) <- c("Kingdom", "Phylum", "Class", "Subclass", "Superorder", "Order", "Family", "Genus", "Species")
+rownames(taxonomy) <- taxcsv$V1
+
+#convert to phyloseq objects
+in_biom_tax <- tax_table(taxonomy)
+taxa_names(in_biom_tax) <- rownames(taxonomy)
+
+#### combine filtered phyloseq object and taxonomy infor
+in_biom <- merge_phyloseq(in_biom, in_biom_tax)
+
+COImzg <- in_biom
+
+save(COImzg, file = "~/Documents/Chapter2/manuscript_analysis/R/workflow_for_github/inputbiomMZG.rdat")
+
+rm(list=c("md", "taxonomy", "taxcsv", "taxbackup", "taxtest", "in_biom_tax", "in_biom"))
+```
+
+
+```{r identify contaminants library2}
+#load("~/Documents/Chapter2/osm_analysis/Leray_COIv1/ncbi_consensus_biom.rdat")
+load("~/Documents/Chapter2/manuscript_analysis/R/workflow_for_github/inputbiomMZG.rdat")
+#COIclean <- subset_samples(COI, sample_data(COI)$net != "Ext. control")
+#COIclean <- subset_samples(COIclean, sample_data(COIclean)$net != "")
+#sample_data(COIclean)$net <- factor(sample_data(zhan_clean_ncbi_tax)$net,levels(sample_data(zhan_clean_ncbi_tax)$net)[c(8,7,6,5,4,3,2,1)])
+#subset_samples(zhan_otus, sample_data(zhan_otus)$cycle == "Cycle 1")
+
+#day <- subset_samples(COI, Sequencing.Run == "2")
+day <- filter_taxa(COImzg, function(x) sum(x > 0) > 1, TRUE)
+day <- subset_samples(day, sample_sums(day) > 0)
+#sample_data(day)$num_DNAconc <- as.numeric(sample_data(day)$DNA.Conc...ug.mL.)
+#sample_data(day)$num_DNAconc[sample_data(day)$num_DNAconc < 0 ] <- 1
+sample_data(day)$Sample_or_Control <- "True Sample" 
+sample_data(day)$Sample_or_Control[sample_data(day)$Sample.ID == "NC"] <- "Control Sample"
+
+df <- as.data.frame(sample_data(day)) # Put sample_data into a ggplot-friendly data.frame
+df$LibrarySize <- sample_sums(day)
+df <- df[order(df$LibrarySize),]
+df$Index <- seq(nrow(df))
+#df$Sample_or_Control <- rep("Sample", n = nrow(df))
+#df$Sample_or_Control[df$net == ""] <- "Control"
+ggplot(data=df, aes(x=Index, y=LibrarySize, color=Sample_or_Control)) + geom_point()
+otutable <- data.frame(otu_table(day))
+
+contamdf.freq <- isContaminant(day, method="frequency", conc="dna.conc")
+head(contamdf.freq)
+head(which(contamdf.freq$contaminant))
+table(contamdf.freq$contaminant)
+plot_frequency(day, taxa=taxa_names(day)[which(contamdf.freq$contaminant)], conc="dna.conc") + 
+  xlab("DNA Concentration (PicoGreen fluorescent intensity)")
+
+
+sample_data(day)$is.neg <- sample_data(day)$Sample_or_Control == "Control Sample"
+
+contamdf.prev <- isContaminant(day, method="prevalence", neg="is.neg")
+table(contamdf.prev$contaminant)
+
+ps.pa <- transform_sample_counts(day, function(abund) 1*(abund>0))
+ps.pa.neg <- prune_samples(sample_data(ps.pa)$Sample_or_Control == "Control Sample", ps.pa)
+ps.pa.pos <- prune_samples(sample_data(ps.pa)$Sample_or_Control == "True Sample", ps.pa)
+# Make data.frame of prevalence in positive and negative samples
+df.pa <- data.frame(pa.pos=taxa_sums(ps.pa.pos), pa.neg=taxa_sums(ps.pa.neg),
+                      contaminant=contamdf.prev$contaminant)
+ggplot(data=df.pa, aes(x=pa.neg, y=pa.pos, color=contaminant)) + geom_point() +
+  xlab("Prevalence (Negative Controls)") + ylab("Prevalence (True Samples)")
+
+
+contamdf.both <- isContaminant(day, method="either", neg="is.neg", conc ="dna.conc")
+table(contamdf.both$contaminant)
+tax_table(day)[which(contamdf.both$contaminant)]
+
+plot_frequency(day, taxa=taxa_names(day)[which(contamdf.both$contaminant)], conc="dna.conc") + 
+  xlab("DNA Concentration (PicoGreen fluorescent intensity)")
+
+
+
+
+daycontam <- taxa_names(day)[which(contamdf.both$contaminant)]
+```
+
+
+```{r}
+##filter out contaminants
+contams <- daycontam
+allTaxa <- taxa_names(COImzg)
+goodTaxa <- allTaxa[!(allTaxa %in% contams)]
+COI_contam <- prune_taxa(contams, COImzg)
+COI_nocontam <- prune_taxa(goodTaxa, COImzg)
+ntaxa(COImzg)
+ntaxa(COI_nocontam)
+
+
+contamtax <- data.frame(tax_table(COI_contam))
+write.csv(contamtax, file = "COIcontam_tax.csv")
+contamab <- data.frame(otu_table(COI_contam))
+write.csv(contamab, file = "COIcontam_ab.csv")
+contam_samdat <- data.frame(sample_data(COI_contam))
+write.csv(contam_samdat, file = "COIcontam_sampdat.csv")
+
+##remove Neg controls
+COIclean_MZGtax <- subset_samples(COI_nocontam, sample_data(COI_nocontam)$Sample.ID != "NC")
+
+
+save(COIclean_MZGtax, file = "~/Documents/Chapter2/manuscript_analysis/R/workflow_for_github/COI_cleanmzg.Rdat")
+```
+
+
+```{r filter to zooplankton}
+
+unique(tax_table(COIclean_MZGtax)[,2])
+#COIclean_zooplankton <- subset_taxa(COIclean_midori_tax, Phylum!="Bacillariophyta")
+#COIclean_zooplankton <- subset_taxa(COIclean_zooplankton, Phylum!="Dinophyceae")
+#COIclean_zooplankton <- subset_taxa(COIclean_zooplankton, Phylum!="Haptista")
+#COIclean_zooplankton <- subset_taxa(COIclean_zooplankton, Phylum!="Chlorophyta")
+#COIclean_zooplankton <- subset_taxa(COIclean_zooplankton, Phylum!="Chrysophyceae")
+#COIclean_zooplankton <- subset_taxa(COIclean_zooplankton, Phylum!="Ascomycota")
+COIclean_zooplankton <- subset_taxa(COIclean_MZGtax, Phylum!="")
+COIclean_zooplankton <- subset_taxa(COIclean_zooplankton, Class!="Actinopterygii")
+COIclean_zooplankton <- subset_taxa(COIclean_zooplankton, Class!="Anthozoa")
+unique(tax_table(COIclean_zooplankton)[,2])
+unique(tax_table(COIclean_zooplankton)[,3])
+
+
+unique(tax_table(COIclean_zooplankton)[,4])
+
+save(COIclean_zooplankton, file = "~/Documents/Chapter2/manuscript_analysis/R/workflow_for_github/COI_clean_zooplanktonMZG.Rdat")
+
+
+```
+
+
+```{r import zhan data with MZG taxonomy}
+in_biom <- import_biom("~/Documents/Chapter2/osm_analysis/qiime2_analyses/zhan_v2/exported-feature-table/feature-table_json.biom", refseqfilename = "~/Documents/Chapter2/osm_analysis/qiime2_analyses/zhan_v2/uchime-dn-out/Zhan_after_uchimefiltering_repseqs.fasta")
+#sample_names(in_biom)
+
+md <- import_qiime_sample_data("~/Documents/Chapter2/osm_analysis/qiime2_analyses/zhan_v2/zhan_metadata_v1.txt") #### saved from metadata file for whole project
+in_biom <- merge_phyloseq(in_biom, md)
+
+#assigned with sklearn classifier trained on metazoogene data
+#with RDP classifier, COI, unique, confidence cutoff 0.8
+taxcsv <- read.csv("~/Documents/Chapter2/osm_analysis/qiime2_analyses/zhan_v2/18S_ASVS_classifiedwithtrimmedmzg.tsv", sep="\t", header = F)
+taxcsv <- read.csv("~/Documents/Chapter2/osm_analysis/qiime2_analyses/zhan_v2/18S_ASVS_classifiedwithtrimmedmzg.tsv", sep="\t", header = F)
+taxbackup <- taxcsv
+
+taxcsv <- taxcsv[-1,]
+taxcsv <- taxcsv[-1,]
+taxonomy <- str_split_fixed(taxcsv$V2, ";", n=21)
+
+taxbackup <- taxonomy
+taxtest <- taxonomy
+
+## remove leading levels: 
+taxtest <- lapply(taxtest, function(x) gsub(".ull_", "", x))
+taxtest <- lapply(taxtest, function(x) gsub("_", " ", x))
+taxtest <- data.frame(matrix(unlist(taxtest), nrow=nrow(taxonomy), byrow=F),stringsAsFactors=FALSE)
+
+#taxtest <- lapply(taxtest, function(x) gsub("_[0-9]+", "", x))
+#taxtest <- data.frame(matrix(unlist(taxtest), nrow=nrow(taxonomy), byrow=F),stringsAsFactors=FALSE)
+
+
+taxonomy <- as.matrix(taxtest[,c(1, 4,5,8,9,11,12,16,18,20)])
+
+colnames(taxonomy) <- c("Kingdom", "Phylum", "Subphylum", "Class", "Subclass", "Superorder", "Order", "Family", "Genus", "Species")
+rownames(taxonomy) <- taxcsv$V1
+
+#convert to phyloseq objects
+in_biom_tax <- tax_table(taxonomy)
+taxa_names(in_biom_tax) <- rownames(taxonomy)
+
+#### combine filtered phyloseq object and taxonomy infor
+in_biom <- merge_phyloseq(in_biom, in_biom_tax)
+
+ZHANmzg <- in_biom
+
+save(ZHANmzg, file = "~/Documents/Chapter2/manuscript_analysis/R/workflow_for_github/inputbiomMZG.rdat")
+
+rm(list=c("md", "taxonomy", "taxcsv", "in_biom", "taxbackup", "taxtest", "in_biom_tax"))
+```
+
+
+```{r clean up contaminants}
+day <- filter_taxa(ZHANmzg, function(x) sum(x > 0) > 1, TRUE)
+day <- subset_samples(day, sample_sums(day) > 0)
+#sample_data(day)$num_DNAconc <- as.numeric(sample_data(day)$DNA.Conc...ug.mL.)
+#sample_data(day)$num_DNAconc[sample_data(day)$num_DNAconc < 0 ] <- 1
+sample_data(day)$Sample_or_Control <- "True Sample" 
+sample_data(day)$Sample_or_Control[sample_data(day)$Sample.ID == "NC"] <- "Control Sample"
+
+df <- as.data.frame(sample_data(day)) # Put sample_data into a ggplot-friendly data.frame
+df$LibrarySize <- sample_sums(day)
+df <- df[order(df$LibrarySize),]
+df$Index <- seq(nrow(df))
+#df$Sample_or_Control <- rep("Sample", n = nrow(df))
+#df$Sample_or_Control[df$net == ""] <- "Control"
+ggplot(data=df, aes(x=Index, y=LibrarySize, color=Sample_or_Control)) + geom_point()
+otutable <- data.frame(otu_table(day))
+
+contamdf.freq <- isContaminant(day, method="frequency", conc="dna.conc")
+head(contamdf.freq)
+head(which(contamdf.freq$contaminant))
+table(contamdf.freq$contaminant)
+plot_frequency(day, taxa=taxa_names(day)[which(contamdf.freq$contaminant)], conc="dna.conc") + 
+  xlab("DNA Concentration (PicoGreen fluorescent intensity)")
+
+sample_data(day)$is.neg <- sample_data(day)$Sample_or_Control == "Control Sample"
+
+contamdf.prev <- isContaminant(day, method="prevalence", neg="is.neg")
+table(contamdf.prev$contaminant)
+
+ps.pa <- transform_sample_counts(day, function(abund) 1*(abund>0))
+ps.pa.neg <- prune_samples(sample_data(ps.pa)$Sample_or_Control == "Control Sample", ps.pa)
+ps.pa.pos <- prune_samples(sample_data(ps.pa)$Sample_or_Control == "True Sample", ps.pa)
+# Make data.frame of prevalence in positive and negative samples
+df.pa <- data.frame(pa.pos=taxa_sums(ps.pa.pos), pa.neg=taxa_sums(ps.pa.neg),
+                      contaminant=contamdf.prev$contaminant)
+ggplot(data=df.pa, aes(x=pa.neg, y=pa.pos, color=contaminant)) + geom_point() +
+  xlab("Prevalence (Negative Controls)") + ylab("Prevalence (True Samples)")
+
+contamdf.both <- isContaminant(day, method="either", neg="is.neg", conc ="dna.conc")
+table(contamdf.both$contaminant)
+tax_table(day)[which(contamdf.both$contaminant)]
+
+plot_frequency(day, taxa=taxa_names(day)[which(contamdf.both$contaminant)], conc="dna.conc") + 
+  xlab("DNA Concentration (PicoGreen fluorescent intensity)")
+
+daycontam <- taxa_names(day)[which(contamdf.both$contaminant)]
+```
+
+
+```{r}
+##filter out contaminants
+contams <- daycontam
+allTaxa <- taxa_names(ZHANmzg)
+goodTaxa <- allTaxa[!(allTaxa %in% contams)]
+zhan_contam <- prune_taxa(contams, ZHANmzg)
+zhan_nocontam <- prune_taxa(goodTaxa, ZHANmzg)
+ntaxa(ZHANmzg)
+ntaxa(zhan_nocontam)
+
+contamtax <- data.frame(tax_table(zhan_contam))
+write.csv(contamtax, file = "zhancontam_tax.csv")
+contamab <- data.frame(otu_table(zhan_contam))
+write.csv(contamab, file = "zhancontam_ab.csv")
+contam_samdat <- data.frame(sample_data(zhan_contam))
+write.csv(contam_samdat, file = "zhancontam_sampdat.csv")
+
+##remove Neg controls
+zhan_nocontam <- subset_samples(zhan_nocontam, sample_data(zhan_nocontam)$Sample.ID != "NC")
+
+save(zhan_nocontam, file = "~/Documents/Chapter2/manuscript_analysis/R/workflow_for_github/Zhan_cleaned_biom.rdat")
+
+```
+
+
+```{r filter to zooplankton}
+unique(tax_table(zhan_nocontam)[,2])
+unique(tax_table(zhan_nocontam)[,3])
+unique(tax_table(zhan_nocontam)[,4])
+unique(tax_table(zhan_nocontam)[,5])
+
+unique(tax_table(zhan_nocontam)[,6])
+unique(tax_table(zhan_nocontam)[,7])
+
+zhan_nocontam <- subset_taxa(zhan_nocontam, Phylum!="")
+zhan_nocontam <- subset_taxa(zhan_nocontam, Class!="Anthozoa")
+
+zhan_zooplankton <- zhan_nocontam
+
+save(zhan_zooplankton, file = "~/Documents/Chapter2/manuscript_analysis/R/workflow_for_github/Zhan_cleaned_biom_zooplankton.rdat")
+
+```
+
+
+
+```{r merge samples}
+COI <- merge_samples(COIclean_zooplankton, "Sample.ID", fun = "mean")
+sample_data(COI)$Diel[sample_data(COI)$Tow == 7] <- "Day"
+sample_data(COI)$Diel[sample_data(COI)$Tow == 11] <- "Day"
+sample_data(COI)$Diel[sample_data(COI)$Tow == 25] <- "Day"
+sample_data(COI)$Diel[sample_data(COI)$Tow == 8] <- "Night"
+sample_data(COI)$Diel[sample_data(COI)$Tow == 12] <- "Night"
+sample_data(COI)$Diel[sample_data(COI)$Tow == 26] <- "Night"
+sample_data(COI)$Sample_ID <- sample_names(COI)
+sample_data(COI)$Cruise <- "NH1208"
+sample_data(COI) <- sample_data(COI)[,c("Sample_ID", "Cruise", "Station", "Tow", "Net", "min.depth", "max.depth", "target.min", "target.max", "target.mean", "Temp", "Sal", "dna.conc", "Diel")]
+sample_data(COI)$stratum <- "Epipelagic"
+sample_data(COI)$stratum[sample_data(COI)$target.mean > 200] <- "Mesopelagic"
+sample_data(COI)$Station.char <- NA
+sample_data(COI)$Station.char[sample_data(COI)$Station == 7] <- "Subarctic"
+sample_data(COI)$Station.char[sample_data(COI)$Station == 15] <- "Transition"
+sample_data(COI)$Station.char[sample_data(COI)$Station == 34] <- "Subtropical"
+sample_data(COI)$Station.char.fac <- factor(sample_data(COI)$Station.char, levels = c("Subarctic", "Transition", "Subtropical"))
+                     
+ZHAN <- merge_samples(zhan_zooplankton, "Sample.ID", fun = "mean")
+sample_data(ZHAN)$Diel[sample_data(ZHAN)$Tow == 7] <- "Day"
+sample_data(ZHAN)$Diel[sample_data(ZHAN)$Tow == 11] <- "Day"
+sample_data(ZHAN)$Diel[sample_data(ZHAN)$Tow == 25] <- "Day"
+sample_data(ZHAN)$Diel[sample_data(ZHAN)$Tow == 8] <- "Night"
+sample_data(ZHAN)$Diel[sample_data(ZHAN)$Tow == 12] <- "Night"
+sample_data(ZHAN)$Diel[sample_data(ZHAN)$Tow == 26] <- "Night"
+sample_data(ZHAN)$Sample_ID <- sample_names(COI)
+sample_data(ZHAN)$Cruise <- "NH1208"
+sample_data(ZHAN) <- sample_data(ZHAN)[,c("Sample_ID", "Cruise", "Station", "Tow", "Net", "min.depth", "max.depth", "target.min", "target.max", "target.mean", "Temp", "Sal", "dna.conc", "Diel")]
+sample_data(ZHAN)$stratum <- "Epipelagic"
+sample_data(ZHAN)$stratum[sample_data(ZHAN)$target.mean > 200] <- "Mesopelagic"
+sample_data(ZHAN)$Station.char <- NA
+sample_data(ZHAN)$Station.char[sample_data(ZHAN)$Station == 7] <- "Subarctic"
+sample_data(ZHAN)$Station.char[sample_data(ZHAN)$Station == 15] <- "Transition"
+sample_data(ZHAN)$Station.char[sample_data(ZHAN)$Station == 34] <- "Subtropical"
+sample_data(ZHAN)$Station.char.fac <- factor(sample_data(ZHAN)$Station.char, levels = c("Subarctic", "Transition", "Subtropical"))
+
+
+```
+
+
+```{r COI filter by ORF to remove pseudogenese}
+
+#read in the fasta file using seqinr
+ex_data = seqinr::read.fasta("~/Documents/Chapter2/osm_analysis/qiime2_analyses/leray_v2/COI-paired-end-demux_rep-seqs-dada2_vsearch97.fasta", as.string = TRUE)
+
+#reformat
+ parsed_names_data = lapply(1:length(ex_data), function(i){
+   unlist(names(ex_data)[[i]])
+ })
+example_barcode_data_from_scratch = data.frame(
+  id = unlist(parsed_names_data),
+  sequence = unname(unlist(ex_data))
+)
+start_time <- Sys.time()
+example_barcode_data_from_scratch_metab <- example_barcode_data_from_scratch#[1:100,]
+
+example_barcode_data_from_scratch_metab$coi_output = lapply(1:nrow(example_barcode_data_from_scratch_metab), function(i){
+  coi5p_pipe(example_barcode_data_from_scratch_metab$sequence[i], 
+             name = example_barcode_data_from_scratch_metab$id[i],
+             frame_offset = 3)
+})
+
+example_barcode_data_from_scratch_metab$coi_output[[1]] 
+
+
+#extract all columns
+metab_df = flatten_coi5p(example_barcode_data_from_scratch_metab$coi_output)
+#full_coi5p_df
+end_time <- Sys.time()
+
+end_time - start_time
+beepr::beep(4)
+
+table(metab_df$stop_codons)
+table(metab_df$indel_likely)
+
+
+#takes 17.5 seconds to run for 100 sequences
+#should take about 8.4 minutes to run for 2800 sequences
+
+truecoiseqs <- metab_df$name[metab_df$stop_codons == "FALSE"]
+coilikeseqs <- metab_df$name[metab_df$stop_codons == "TRUE"]
+
+COI <- prune_taxa(truecoiseqs, COI)
+
+```
+
+
+```{r save}
+              
+save(COI, ZHAN, file = "~/Documents/Chapter2/manuscript_analysis/R/workflow_for_github/COI&ZHAN_CleanZooplanktonMerged.rdat")
+       
+```
+
+
+Remove species ID for species not found in the N. Pacific (i.e. use genus only)
+Assign traits, assign dvm
+
+
+```{r load data}
+load("~/Documents/Chapter2/manuscript_analysis/R/workflow_for_github/COI&ZHAN_CleanZooplanktonMerged.rdat")
+```
+
+
+remove species IDs for species not occuring the N. Pacific (use genus ID only)
+```{r}
+notpresent <- read.csv("~/Documents/Chapter2/manuscript_analysis/observed_species_not_in_CCElist_from_Steph_30Jun2022_mdo&sm.csv")
+notpresent$unique_taxstring <- paste(notpresent$Kingdom.x, notpresent$Phylum.x, notpresent$Subphylum, notpresent$Class.x, notpresent$Subclass, notpresent$Superorder, notpresent$Order.x, notpresent$Family.x, notpresent$Genus.x, notpresent$Species)
+notpresent$unique_taxstring <- str_trim(notpresent$unique_taxstring)
+notpresent <- notpresent[notpresent$net.of.MBARI...Mark == "no",]
+
+leray_taxtable <- as.data.frame(tax_table(COI))
+leray_taxtable$unique_taxstring <- paste(leray_taxtable$Kingdom, leray_taxtable$Phylum, leray_taxtable$Subphylum, leray_taxtable$Class, leray_taxtable$Subclass, leray_taxtable$Superorder, leray_taxtable$Order, leray_taxtable$Family, leray_taxtable$Genus, leray_taxtable$Species)
+leray_taxtable$unique_taxstring <- str_trim(leray_taxtable$unique_taxstring)
+leray_taxtable$Species[leray_taxtable$unique_taxstring %in% notpresent$unique_taxstring] <- ""
+leray_taxtable$unique_taxstring <- paste(leray_taxtable$Kingdom, leray_taxtable$Phylum, leray_taxtable$Subphylum, leray_taxtable$Class, leray_taxtable$Subclass, leray_taxtable$Superorder, leray_taxtable$Order, leray_taxtable$Family, leray_taxtable$Genus, leray_taxtable$Species)
+phyloseqtabletax <- tax_table(as.matrix(leray_taxtable))
+tax_table(COI) <- phyloseqtabletax
+
+zhan_taxtable <- as.data.frame(tax_table(ZHAN))
+zhan_taxtable$unique_taxstring <- paste(zhan_taxtable$Kingdom, zhan_taxtable$Phylum, zhan_taxtable$Subphylum, zhan_taxtable$Class, zhan_taxtable$Subclass, zhan_taxtable$Superorder, zhan_taxtable$Order, zhan_taxtable$Family, zhan_taxtable$Genus, zhan_taxtable$Species)
+zhan_taxtable$unique_taxstring <- str_trim(zhan_taxtable$unique_taxstring)
+zhan_taxtable$Species[zhan_taxtable$unique_taxstring %in% notpresent$unique_taxstring] <- ""
+zhan_taxtable$unique_taxstring <- paste(zhan_taxtable$Kingdom, zhan_taxtable$Phylum, zhan_taxtable$Subphylum, zhan_taxtable$Class, zhan_taxtable$Subclass, zhan_taxtable$Superorder, zhan_taxtable$Order, zhan_taxtable$Family, zhan_taxtable$Genus, zhan_taxtable$Species)
+phyloseqtabletax <- tax_table(as.matrix(zhan_taxtable))
+tax_table(ZHAN) <- phyloseqtabletax
+```
+
+
+load traits
+```{r}
+unknownspeciestraits <- read_excel("~/Documents/Chapter2/manuscript_analysis/bothmarkers_uniquewithoutspecies_fortraitassignment_v4.xlsx")
+#unknownspeciestraits <- unknownspeciestraits[unknownspeciestraits$Class.x == "Hexanauplia",]
+unknownspeciestraits <- unknownspeciestraits[,c(3,15,18,21,24,26,29,32,34)]
+colnames(unknownspeciestraits) <- c("unique_taxstring", "MinSize", "MaxSize", "Diet", "FeedingBehavior", "Spawning", "AsexualRepro", "DVMBehavior", "Carbon")
+
+speciestraits <- read_excel("~/Documents/Chapter2/manuscript_analysis/bothmarkers_uniquewithspecies_fortraitassignment_v5.xlsx")
+#speciestraits <- speciestraits[speciestraits$Class.x == "Hexanauplia",]
+speciestraits <- speciestraits[,c(13,14,17,20,23,25,28,31,33)]
+colnames(speciestraits) <- c("unique_taxstring", "MinSize", "MaxSize", "Diet", "FeedingBehavior", "Spawning", "AsexualRepro", "DVMBehavior", "Carbon")
+
+traits <- rbind(speciestraits, unknownspeciestraits)
+
+#remove rows with only NA:
+traits <- traits[rowSums(is.na(traits)) != ncol(traits),]
+traits$unique_taxstring <- str_trim(traits$unique_taxstring)
+traits$Diet[traits$Diet=="Carnivore-Parasite"] <- "Carnivore"
+
+```
+
+merge traits with taxonomy
+```{r leray}
+leray_taxtable <- as.data.frame(tax_table(COI))
+## leray_taxtable$Species[leray_taxtable$Species == "Pleuromamma gracilis"] <- ""
+leray_taxtable$unique_taxstring <- paste(leray_taxtable$Kingdom, leray_taxtable$Phylum, leray_taxtable$Subphylum, leray_taxtable$Class, leray_taxtable$Subclass, leray_taxtable$Superorder, leray_taxtable$Order, leray_taxtable$Family, leray_taxtable$Genus, leray_taxtable$Species)
+leray_taxtable$hash <- rownames(leray_taxtable)
+leray_taxtable$unique_taxstring <- str_trim(leray_taxtable$unique_taxstring)
+
+
+leray_taxtabletraits <- merge(leray_taxtable, traits, by.x = "unique_taxstring", by.y = "unique_taxstring", all.x = T, all.y = F) #assign traits to taxa
+leray_taxtabletraits <- leray_taxtabletraits %>% distinct(hash, .keep_all = TRUE)
+rownames(leray_taxtabletraits) <- leray_taxtabletraits$hash
+phyloseqtabletax <- tax_table(as.matrix(leray_taxtabletraits))
+tax_table(COI) <- phyloseqtabletax
+```
+
+```{r zhan}
+#need to substitute space for _
+zhan_taxtable <- as.data.frame(tax_table(ZHAN))
+zhan_taxtable$Species <- gsub("_", " ", zhan_taxtable$Species)
+zhan_taxtable$unique_taxstring <- paste(zhan_taxtable$Kingdom, zhan_taxtable$Phylum, zhan_taxtable$Subphylum, zhan_taxtable$Class, zhan_taxtable$Subclass, zhan_taxtable$Superorder, zhan_taxtable$Order, zhan_taxtable$Family, zhan_taxtable$Genus, zhan_taxtable$Species)
+zhan_taxtable$hash <- rownames(zhan_taxtable)
+zhan_taxtable$unique_taxstring <- str_trim(zhan_taxtable$unique_taxstring)
+
+
+zhan_taxtabletraits <- merge(zhan_taxtable, traits, by.x = "unique_taxstring", by.y = "unique_taxstring", all.x = T, all.y = F) #assign traits to taxa
+zhan_taxtabletraits <- zhan_taxtabletraits %>% distinct(hash, .keep_all = TRUE)
+rownames(zhan_taxtabletraits) <- zhan_taxtabletraits$hash
+phyloseqtabletax <- tax_table(as.matrix(zhan_taxtabletraits))
+tax_table(ZHAN) <- phyloseqtabletax
+
+```
+
+```{r check that data are as expected}
+# plot_bar(COI, x = "Net", fill = "Order") + facet_wrap(Diel~Station.char)
+# lc.ord <- ordinate(COI, "NMDS", "bray")
+# plot_ordination(COI, lc.ord, type="samples", color="Station.char", title="samples by station")
+# plot_ordination(COI, lc.ord, type="samples", color="Net", title="samples by station")
+# plot_ordination(COI, lc.ord, type="taxa", color="Diet", shape = "Spawning", title="COI taxa by size and spawning")
+# 
+# plot_bar(ZHAN, x = "Net", fill = "Order") + facet_wrap(Diel~Station.char)
+# plot_heatmap(ZHAN, taxa.label = "MinSize")
+# zc.ord <- ordinate(ZHAN, "NMDS", "bray")
+# plot_ordination(ZHAN, zc.ord, type="samples", color="Station.char", title="samples by station")
+# plot_ordination(ZHAN, zc.ord, type="samples", color="Net", title="samples by station")
+# plot_ordination(ZHAN, zc.ord, type="taxa", color="Diet", shape = "Spawning", title="18S taxa by size and spawning")
+# 
+# hist(taxa_sums(COI))
+# hist(taxa_sums(ZHAN))
+```
+
+
+# Let's calculated wmds and dvm behavior:
+
+
+```{r calculate dvm for abund species based on net difference of mode}
+calc_netmode <- function(n){
+  nightwmd <- numeric(n)
+  daywmd <- numeric(n)
+  namedotu <- character(n)
+  for (i in 1:n) { if (sum(subsampled_netsums[i,] > 0)) {
+  nightwmd[i] <- mean(which(subsampled_netsums[i,] == max(subsampled_netsums[i,]))) #which.max(subsampled_netsums[i,])
+  ## mean(which()) will take the mean of the depths of the mode if there are multiple depths with the same # of reads
+  } else {
+    nightwmd[i] <- NA
+  }
+    namedotu[i] <- row.names(subsampled_netsums)[[i]]
+  }
+  data.frame(namedotu, nightwmd, stringsAsFactors = FALSE)
+}
+scratchCOI_rarefied <- rarefy_even_depth(COI)
+
+day <- subset_samples(scratchCOI_rarefied, Diel=="Day")
+night <- subset_samples(scratchCOI_rarefied, Diel=="Night")
+stn15_COI_n <- subset_samples(night, Station==15)
+stn34_COI_n <- subset_samples(night, Station==34)
+stn7_COI_n <- subset_samples(night, Station==7)
+stn15_COI_d <- subset_samples(day, Station==15)
+stn34_COI_d <- subset_samples(day, Station==34)
+stn7_COI_d <- subset_samples(day, Station==7)
+
+#daydepths <- c(900,700,500,300,150,75,38,13)
+#nightdepths <- c(900,700,500,300,150,75,38,13)
+daydepths <- c(8,7,6,5,4,3,2,1)
+nightdepths <- c(8,7,6,5,4,3,2,1)
+
+subsampled_netsums <- t(data.frame(otu_table(stn15_COI_n)))
+net_depths <- nightdepths
+wmd_c1n_COI <- calc_netmode(ntaxa(stn15_COI_n)) #input to calc_wmd should be the total number of OTUs - will calculate for 1:input 
+wmd_c1n_COI$namedotu <- taxa_names(stn15_COI_n)
+wmd_c1n_COI$stn15N_sum <- taxa_sums(stn15_COI_n)
+wmd_c1n_COI$stn15N_nsamples <- taxa_sums(phyloseq_standardize_otu_abundance(stn15_COI_n, method = "pa"))
+
+subsampled_netsums <- t(data.frame(otu_table(stn34_COI_n))) 
+net_depths <- daydepths
+wmd_c2n_COI <- calc_netmode(ntaxa(stn34_COI_n)) #input to calc_wmd should be the total number of OTUs - will calculate for 1:input 
+wmd_c2n_COI$namedotu <- taxa_names(stn34_COI_n)
+wmd_c2n_COI$stn34N_sum <- taxa_sums(stn34_COI_n)
+wmd_c2n_COI$stn34N_nsamples <- taxa_sums(phyloseq_standardize_otu_abundance(stn34_COI_n, method = "pa"))
+
+subsampled_netsums <- t(data.frame(otu_table(stn7_COI_n)))
+net_depths <- daydepths
+wmd_c3n_COI <- calc_netmode(ntaxa(stn7_COI_n)) #input to calc_wmd should be the total number of OTUs - will calculate for 1:input 
+wmd_c3n_COI$namedotu <- taxa_names(stn7_COI_n)
+wmd_c3n_COI$stn7N_sum <- taxa_sums(stn7_COI_n)
+wmd_c3n_COI$stn7N_nsamples <- taxa_sums(phyloseq_standardize_otu_abundance(stn7_COI_n, method = "pa"))
+
+subsampled_netsums <- t(data.frame(otu_table(stn15_COI_d)))
+net_depths <- daydepths
+wmd_c1d_COI <- calc_netmode(ntaxa(stn15_COI_d)) #input to calc_wmd should be the total number of OTUs - will calculate for 1:input 
+wmd_c1d_COI$namedotu <- taxa_names(stn15_COI_d)
+wmd_c1d_COI$stn15D_sum <- taxa_sums(stn15_COI_d)
+wmd_c1d_COI$stn15D_nsamples <- taxa_sums(phyloseq_standardize_otu_abundance(stn15_COI_d, method = "pa"))
+
+subsampled_netsums <- t(data.frame(otu_table(stn34_COI_d)))
+net_depths <- daydepths
+wmd_c2d_COI <- calc_netmode(ntaxa(stn34_COI_d)) #input to calc_wmd should be the total number of OTUs - will calculate for 1:input 
+wmd_c2d_COI$namedotu <- taxa_names(stn34_COI_d)
+wmd_c2d_COI$stn34D_sum <- taxa_sums(stn34_COI_d)
+wmd_c2d_COI$stn34D_nsamples <- taxa_sums(phyloseq_standardize_otu_abundance(stn34_COI_d, method = "pa"))
+
+subsampled_netsums <- t(data.frame(otu_table(stn7_COI_d)))
+net_depths <- daydepths
+wmd_c3d_COI <- calc_netmode(ntaxa(stn7_COI_d)) #input to calc_wmd should be the total number of OTUs - will calculate for 1:input 
+wmd_c3d_COI$namedotu <- taxa_names(stn7_COI_d)
+wmd_c3d_COI$stn7D_sum <- taxa_sums(stn7_COI_d)
+wmd_c3d_COI$stn7D_nsamples <- taxa_sums(phyloseq_standardize_otu_abundance(stn7_COI_d, method = "pa"))
+
+taxasums <- data.frame(taxa_names(scratchCOI_rarefied), taxa_sums(scratchCOI_rarefied))
+colnames(taxasums) <- c("namedotu", "taxa_sums")
+
+taxapresence <- data.frame(taxa_names(scratchCOI_rarefied), taxa_sums(phyloseq_standardize_otu_abundance(scratchCOI_rarefied, method = "pa")))
+colnames(taxapresence) <- c("namedotu", "taxa_nsamples")
+
+daysums <- data.frame(taxa_names(day), taxa_sums(day))
+colnames(daysums) <- c("namedotu", "day_sums")
+
+nightsums <- data.frame(taxa_names(night), taxa_sums(night))
+colnames(nightsums) <- c("namedotu", "night_sums")
+
+calc_wmd <- function(n){
+  nightwmd <- numeric(n)
+  daywmd <- numeric(n)
+  namedotu <- character(n)
+  for (i in 1:n) {
+    nightwmd[i] <- ((subsampled_netsums[i,1]*net_depths[[1]]+subsampled_netsums[i,2]*net_depths[[2]]+subsampled_netsums[i,3]*net_depths[[3]]+subsampled_netsums[i,4]*net_depths[[4]]+subsampled_netsums[i,5]*net_depths[[5]]+subsampled_netsums[i,6]*net_depths[[6]]+subsampled_netsums[i,7]*net_depths[[7]]+subsampled_netsums[i,8]*net_depths[[8]])/(sum(subsampled_netsums[i,])))
+    namedotu[i] <- row.names(subsampled_netsums)[[i]]
+  }
+  data.frame(namedotu, nightwmd, stringsAsFactors = FALSE)
+}
+COInets <- merge_samples(COI, "target.mean", fun = "mean")
+netdepths <- c(900,700,500,300,150,75,38,13)
+netdepths <- rev(c(900,700,500,300,150,75,38,13))
+subsampled_netsums <- data.frame(t(otu_table(COInets)))
+net_depths <- netdepths
+meandepths <- calc_wmd(ntaxa(COInets)) 
+colnames(meandepths) <- c("namedotu", "meandepth")
+
+netdepths <- c(900,700,500,300,150,75,38,13)
+net_depths <- netdepths
+subsampled_netsums <- data.frame(t(otu_table(stn15_COI_n)))
+meandepths_15n <- calc_wmd(ntaxa(stn15_COI_n)) 
+colnames(meandepths_15n) <- c("namedotu", "meandepth")
+subsampled_netsums <- data.frame(t(otu_table(stn34_COI_n)))
+meandepths_34n <- calc_wmd(ntaxa(stn34_COI_n)) 
+colnames(meandepths_34n) <- c("namedotu", "meandepth")
+subsampled_netsums <- data.frame(t(otu_table(stn7_COI_n)))
+meandepths_7n <- calc_wmd(ntaxa(stn7_COI_n)) 
+colnames(meandepths_7n) <- c("namedotu", "meandepth")
+subsampled_netsums <- data.frame(t(otu_table(stn15_COI_d)))
+meandepths_15d <- calc_wmd(ntaxa(stn15_COI_d)) 
+colnames(meandepths_15d) <- c("namedotu", "meandepth")
+subsampled_netsums <- data.frame(t(otu_table(stn34_COI_d)))
+meandepths_34d <- calc_wmd(ntaxa(stn34_COI_d)) 
+colnames(meandepths_34d) <- c("namedotu", "meandepth")
+subsampled_netsums <- data.frame(t(otu_table(stn7_COI_d)))
+meandepths_7d <- calc_wmd(ntaxa(stn7_COI_d)) 
+colnames(meandepths_7d) <- c("namedotu", "meandepth")
+
+wmd_COI <- merge(wmd_c1n_COI, wmd_c2n_COI, by = "namedotu") %>%
+  merge(wmd_c3n_COI, by = "namedotu") %>%
+  merge(wmd_c1d_COI, by = "namedotu") %>%
+  merge(wmd_c2d_COI, by = "namedotu") %>%
+  merge(wmd_c3d_COI, by = "namedotu") %>% 
+  merge(taxasums, by = "namedotu")%>% 
+  merge(taxapresence, by = "namedotu") %>%
+  merge(daysums, by = "namedotu")%>% 
+  merge(nightsums, by = "namedotu")%>%
+  merge(meandepths, by = "namedotu") %>%
+  merge(meandepths_15n, by = "namedotu")%>%
+  merge(meandepths_34n, by = "namedotu")%>%
+  merge(meandepths_7n, by = "namedotu")%>%
+  merge(meandepths_15d, by = "namedotu")%>%
+  merge(meandepths_34d, by = "namedotu")%>%
+  merge(meandepths_7d, by = "namedotu")
+
+colnames(wmd_COI) <- c("name", "stn15N_modenet","stn15N_sum",  "stn15N_nsamples",  "stn34N_modenet","stn34N_sum","stn34N_nsamples",  "stn7N_modenet","stn7N_sum","stn7N_nsamples",  "stn15D_modenet","stn15D_sum","stn15D_nsamples", "stn34D_modenet", "stn34D_sum", "stn34D_nsamples", "stn7D_modenet","stn7D_sum","stn7D_nsamples", "taxa_sums", "taxa_nsamplestotal", "day_sums", "night_sums", "meandepth", "meandepth15n", "meandepth34n", "meandepth7n", "meandepth15d", "meandepth34d", "meandepth7d")
+
+taxtabledata <- data.frame(tax_table(COI))
+taxtabledata$name <- rownames(taxtabledata)
+
+wmd_COI <- merge(wmd_COI, taxtabledata, by = "name")
+wmd_COI
+
+#sanity check
+table(wmd_COI$day_sums+wmd_COI$night_sums == wmd_COI$taxa_sums)
+
+
+#### to classify taxa as epipelagic or mesopelagic
+
+wmd_COI$classification <- NA
+wmd_COI$classification[wmd_COI$meandepth >= 200] <- "Mesopelagic"
+wmd_COI$classification[wmd_COI$meandepth < 200] <- "Epipelagic"
+
+wmd_COI$stn15diff <- wmd_COI$stn15N_modenet - wmd_COI$stn15D_modenet #night net minus day net (N - D)  means that if night is larger than day (shallower > larger net number), then if this is positive, you're shallower at night - so regular dvm; if it's negative then day is larger than night, then the day net is shallower, so that's reverse dvm for a neg value
+wmd_COI$stn34diff <- wmd_COI$stn34N_modenet - wmd_COI$stn34D_modenet
+wmd_COI$stn7diff <- wmd_COI$stn7N_modenet - wmd_COI$stn7D_modenet
+
+#find the proportion between D/N for each station
+wmd_COI$stn15perc <- wmd_COI$stn15N_sum/wmd_COI$stn15D_sum
+wmd_COI$stn34perc <- wmd_COI$stn34N_sum/wmd_COI$stn34D_sum
+wmd_COI$stn7perc <- wmd_COI$stn7N_sum/wmd_COI$stn7D_sum
+
+wmd_COI$stn15pa <- rowSums(wmd_COI[,c("stn15N_sum", "stn15D_sum")], na.rm = TRUE)
+wmd_COI$stn15pa[wmd_COI$stn15pa > 0] <- 1
+wmd_COI$stn34pa <- rowSums(wmd_COI[,c("stn34N_sum","stn34D_sum")], na.rm = TRUE)
+wmd_COI$stn34pa[wmd_COI$stn34pa > 0] <- 1
+wmd_COI$stn7pa <- rowSums(wmd_COI[,c("stn7N_sum","stn7D_sum")], na.rm = TRUE)
+wmd_COI$stn7pa[wmd_COI$stn7pa > 0] <- 1
+
+wmd_COI$nstations <- rowSums(wmd_COI[,c("stn15pa", "stn34pa", "stn7pa")] > 0, na.rm = TRUE)
+
+```
+
+
+```{r station 7}
+###################################### redo classifications for each station independently ##################### 
+## 1) first we'll make an empty column - ideally these will all be gone at the end of this
+wmd_COI$migratory_stat7 <- "empty"
+wmd_COI$migratory_stat7[(rowSums(wmd_COI[ , c("stn7N_sum", "stn7D_sum")], na.rm = T)) > 0] <- "unknown"
+
+minoccur <- sum(wmd_COI$stn7N_sum, wmd_COI$stn7D_sum)/10000 #minimum occurrence is 0.01% of the total number of reads for the cycle
+
+### 2) now, let's define non-migratory taxa as the ones the net difference is < 2 and > -2
+wmd_COI$migratory_stat7[(wmd_COI$stn7diff < 2 & wmd_COI$stn7diff > -2) & wmd_COI$taxa_sums >= minoccur] <- "non-migratory" 
+
+
+### 3) and now reverse migratory - these will be taxa where at least one station has reverse dvm of at least 2 nets
+wmd_COI$migratory_stat7[wmd_COI$stn7diff <= -2] <- "rev.migratory" 
+
+
+### 4) okay, now define migratory - these will be taxa where at least one station has dvm of at least 2 nets
+wmd_COI$migratory_stat7[wmd_COI$stn7diff >= 2] <- "migratory" 
+
+### 5) next, we'll identify the rare ones
+wmd_COI$migratory_stat7[((wmd_COI$stn7N_nsamples <2 | wmd_COI$stn7D_nsamples <2) |  (wmd_COI$stn7N_nsamples + wmd_COI$stn7D_nsamples) <4 ) & wmd_COI$taxa_sums > minoccur ] <- "restricted"
+wmd_COI$migratory_stat7[(wmd_COI$stn15N_sum + wmd_COI$stn15D_sum) < minoccur] <- "rare"
+wmd_COI$migratory_stat7[(rowSums(wmd_COI[ , c("stn7N_sum", "stn7D_sum")], na.rm = T)) == 0] <- "empty"
+
+
+### 6) okay, for things that are abundant enough, let's rule out the ones where station 7 doesn't have an equal # of day/night reads 
+###if  differences are either greater than 2 or less than 0.5, and it's greater than the minimum occurrence, then it's uneven
+wmd_COI$migratory_stat7[(wmd_COI$stn7perc > 3 | wmd_COI$stn7perc < 0.3) & wmd_COI$taxa_sums >= minoccur] <- "uneven"#ah yes, the d/n difference for non-migratory taxa will come back as NA since I replaced the difference as NA if the proportions were too large or too small, we'll take that out
+
+
+table(wmd_COI$migratory_stat7)
+
+
+ggplot(wmd_COI, aes(x = stn7diff, y = taxa_sums, color = migratory_stat7)) + 
+  geom_point() +
+  theme_bw()+
+  geom_vline(xintercept = 0) +
+ # geom_segment(aes(y = minoccur-0.5, x = magnitude.mdo, yend = max(taxa_sums), xend = magnitude.mdo), color = "black")+
+ # geom_segment(aes(y = minoccur-0.5, x = -magnitude.mdo, yend = max(taxa_sums), xend = -magnitude.mdo), color = "black")+ 
+  geom_hline(yintercept = minoccur-0.5) + 
+  ylab("Read Count of OTU") + 
+  xlab("Rev.Migratory                     D/N difference Stn7 (# Nets)                         Migratory") + 
+  scale_y_log10() + facet_wrap(.~migratory_stat7)
+
+table(wmd_COI$migratory_stat7)
+
+
+```
+
+```{r station 15}
+###################################### redo classifications for each station independently ##################### 
+## 1) first we'll make an empty column - ideally these will all be gone at the end of this
+wmd_COI$migratory_stat15 <- "empty"
+wmd_COI$migratory_stat15[(rowSums(wmd_COI[ , c("stn15N_sum", "stn15D_sum")], na.rm = T)) > 0] <- "unknown"
+
+minoccur <- sum(wmd_COI$stn15N_sum, wmd_COI$stn15D_sum)/10000 #minimum occurrence is 0.01% of the total number of reads for the cycle
+
+
+### 2) now, let's define non-migratory taxa as the ones the net difference is < 3 and > -3
+wmd_COI$migratory_stat15[(wmd_COI$stn15diff < 2 & wmd_COI$stn15diff > -2) & wmd_COI$taxa_sums >= minoccur] <- "non-migratory" 
+
+
+### 3) and now reverse migratory - these will be taxa where at least one station has reverse dvm of at least 2 nets
+wmd_COI$migratory_stat15[wmd_COI$stn15diff <= -2] <- "rev.migratory" 
+
+
+### 4) okay, now define migratory - these will be taxa where at least one station has dvm of at least 2 nets
+wmd_COI$migratory_stat15[wmd_COI$stn15diff >= 2] <- "migratory" 
+
+
+### 5) next, we'll identify the rare ones
+wmd_COI$migratory_stat15[wmd_COI$stn15N_nsamples <2 | wmd_COI$stn15D_nsamples <2 | (wmd_COI$stn15N_nsamples+wmd_COI$stn15D_nsamples) <4] <- "restricted"
+wmd_COI$migratory_stat15[(wmd_COI$stn15N_sum + wmd_COI$stn15D_sum) < minoccur] <- "rare"
+wmd_COI$migratory_stat15[(rowSums(wmd_COI[ , c("stn15N_sum", "stn15D_sum")], na.rm = T)) == 0] <- "empty"
+
+
+### 6) okay, for things that are abundant enough, let's rule out the ones where station 7 doesn't have an equal # of day/night reads 
+###if  differences are either greater than 2 or less than 0.5, and it's greater than the minimum occurrence, then it's uneven
+wmd_COI$migratory_stat15[(wmd_COI$stn15perc > 3 | wmd_COI$stn15perc < 0.3) & wmd_COI$taxa_sums >= minoccur] <- "uneven"#ah yes, the d/n difference for non-migratory taxa will come back as NA since I replaced the didfference as NA if the proportions were too large or too small, we'll take that out
+
+
+table(wmd_COI$migratory_stat15)
+
+
+ggplot(wmd_COI, aes(x = stn15diff, y = taxa_sums, color = migratory_stat15)) + 
+  geom_point() +
+  theme_bw()+
+  geom_vline(xintercept = 0) +
+ # geom_segment(aes(y = minoccur-0.5, x = magnitude.mdo, yend = max(taxa_sums), xend = magnitude.mdo), color = "black")+
+ # geom_segment(aes(y = minoccur-0.5, x = -magnitude.mdo, yend = max(taxa_sums), xend = -magnitude.mdo), color = "black")+ 
+  geom_hline(yintercept = minoccur-0.5) + 
+  ylab("Read Count of OTU") + 
+  xlab("Rev.Migratory                     D/N difference Stn15 (# Nets)                         Migratory") + 
+  scale_y_log10() + facet_wrap(.~migratory_stat15)
+
+table(wmd_COI$migratory_stat15)
+
+
+```
+
+```{r station 34}
+###################################### redo classifications for each station independently ##################### 
+## 1) first we'll make an empty column - ideally these will all be gone at the end of this
+wmd_COI$migratory_stat34 <- "empty"
+wmd_COI$migratory_stat34[(rowSums(wmd_COI[ , c("stn34N_sum", "stn34D_sum")], na.rm = T)) > 0] <- "unknown"
+
+minoccur <- sum(wmd_COI$stn34N_sum, wmd_COI$stn34D_sum)/10000 #minimum occurrence is 0.01% of the total number of reads for the cycle
+
+
+### 2) now, let's define non-migratory taxa as the ones the net difference is < 2 and > -2
+wmd_COI$migratory_stat34[(wmd_COI$stn34diff < 2 & wmd_COI$stn34diff > -2) & wmd_COI$taxa_sums >= minoccur] <- "non-migratory" 
+
+
+### 3) and now reverse migratory - these will be taxa where at least one station has reverse dvm of at least 2 nets
+wmd_COI$migratory_stat34[wmd_COI$stn34diff <= -2] <- "rev.migratory" 
+
+
+### 4) okay, now define migratory - these will be taxa where at least one station has dvm of at least 2 nets
+wmd_COI$migratory_stat34[wmd_COI$stn34diff >= 2] <- "migratory" 
+
+
+### 5) next, we'll identify the rare ones
+wmd_COI$migratory_stat34[wmd_COI$stn34N_nsamples <2 | wmd_COI$stn34D_nsamples <2 | (wmd_COI$stn34N_nsamples+wmd_COI$stn34D_nsamples) < 4] <- "restricted"
+wmd_COI$migratory_stat34[(wmd_COI$stn34N_sum + wmd_COI$stn34D_sum) < minoccur] <- "rare"
+wmd_COI$migratory_stat34[(rowSums(wmd_COI[ , c("stn34N_sum", "stn34D_sum")], na.rm = T)) == 0] <- "empty"
+
+
+### 6) okay, for things that are abundant enough, let's rule out the ones where station 7 doesn't have an equal # of day/night reads 
+###if  differences are either greater than 2 or less than 0.5, and it's greater than the minimum occurrence, then it's uneven
+wmd_COI$migratory_stat34[(wmd_COI$stn34perc > 3 | wmd_COI$stn34perc < 0.3) & wmd_COI$taxa_sums >= minoccur] <- "uneven"#ah yes, the d/n difference for non-migratory taxa will come back as NA since I replaced the difference as NA if the proportions were too large or too small, we'll take that out
+
+
+table(wmd_COI$migratory_stat34)
+
+
+ggplot(wmd_COI, aes(x = stn34diff, y = taxa_sums, color = migratory_stat34)) + 
+  geom_point() +
+  theme_bw()+
+  geom_vline(xintercept = 0) +
+ # geom_segment(aes(y = minoccur-0.5, x = magnitude.mdo, yend = max(taxa_sums), xend = magnitude.mdo), color = "black")+
+ # geom_segment(aes(y = minoccur-0.5, x = -magnitude.mdo, yend = max(taxa_sums), xend = -magnitude.mdo), color = "black")+ 
+  geom_hline(yintercept = minoccur-0.5) + 
+  ylab("Read Count of OTU") + 
+  xlab("Rev.Migratory                     D/N difference Stn34 (# Nets)                         Migratory") + 
+  scale_y_log10() + facet_wrap(.~migratory_stat34)
+
+table(wmd_COI$migratory_stat34)
+```
+
+```{r add back to COI tax table}
+
+wmd_COI$migratory <- "Non-Migratory"
+wmd_COI$migratory[wmd_COI$migratory_stat34 == "migratory" | wmd_COI$migratory_stat15 == "migratory" | wmd_COI$migratory_stat7 == "migratory"] <- "Migratory"
+wmd_COI$revmigratory <- "Non-Migratory"
+wmd_COI$revmigratory[wmd_COI$migratory_stat34 == "rev.migratory" | wmd_COI$migratory_stat15 == "rev.migratory" | wmd_COI$migratory_stat7 == "rev.migratory"] <- "Rev. Migratory"
+wmd_COI$anymigration <- "No Migration"
+wmd_COI$anymigration[wmd_COI$migratory == "Migratory" | wmd_COI$revmigratory == "Rev. Migratory"] <- "DVM"
+wmd_COI[wmd_COI == "NA"] <- NA
+
+taxonomic <- data.frame(tax_table(COI))
+taxonomic$name <- rownames(taxonomic)
+
+wmd_plot <- merge(wmd_COI, taxonomic, by = "name")
+wmd_plot[wmd_plot == "nd"] <- NA
+taxtabletraits <- tax_table(wmd_plot)
+taxa_names(taxtabletraits) <- wmd_plot$name
+colnames(taxtabletraits) <- c(colnames(wmd_COI), colnames(taxonomic)[1:(length(colnames(taxonomic))-1)])
+taxtabletraits[taxtabletraits == "nd"] <- NA
+tax_table(COI) <- taxtabletraits
+
+```
+
+#calculate dvm and vertical zone again for 18S:
+
+```{r calculate dvm for abund species based on net difference of mode}
+calc_netmode <- function(n){
+  nightwmd <- numeric(n)
+  daywmd <- numeric(n)
+  namedotu <- character(n)
+  for (i in 1:n) { if (sum(subsampled_netsums[i,] > 0)) {
+  nightwmd[i] <- mean(which(subsampled_netsums[i,] == max(subsampled_netsums[i,]))) #which.max(subsampled_netsums[i,])
+  ## mean(which()) will take the mean of the depths of the mode if there are multiple depths with the same # of reads
+  } else {
+    nightwmd[i] <- NA
+  }
+    namedotu[i] <- row.names(subsampled_netsums)[[i]]
+  }
+  data.frame(namedotu, nightwmd, stringsAsFactors = FALSE)
+}
+scratchCOI_rarefied <- rarefy_even_depth(ZHAN)
+
+day <- subset_samples(scratchCOI_rarefied, Diel=="Day")
+night <- subset_samples(scratchCOI_rarefied, Diel=="Night")
+stn15_COI_n <- subset_samples(night, Station==15)
+stn34_COI_n <- subset_samples(night, Station==34)
+stn7_COI_n <- subset_samples(night, Station==7)
+stn15_COI_d <- subset_samples(day, Station==15)
+stn34_COI_d <- subset_samples(day, Station==34)
+stn7_COI_d <- subset_samples(day, Station==7)
+
+#daydepths <- c(900,700,500,300,150,75,38,13)
+#nightdepths <- c(900,700,500,300,150,75,38,13)
+daydepths <- c(8,7,6,5,4,3,2,1)
+nightdepths <- c(8,7,6,5,4,3,2,1)
+
+subsampled_netsums <- t(data.frame(otu_table(stn15_COI_n)))
+net_depths <- nightdepths
+wmd_c1n_COI <- calc_netmode(ntaxa(stn15_COI_n)) #input to calc_wmd should be the total number of OTUs - will calculate for 1:input 
+wmd_c1n_COI$namedotu <- taxa_names(stn15_COI_n)
+wmd_c1n_COI$stn15N_sum <- taxa_sums(stn15_COI_n)
+wmd_c1n_COI$stn15N_nsamples <- taxa_sums(phyloseq_standardize_otu_abundance(stn15_COI_n, method = "pa"))
+
+subsampled_netsums <- t(data.frame(otu_table(stn34_COI_n))) 
+net_depths <- daydepths
+wmd_c2n_COI <- calc_netmode(ntaxa(stn34_COI_n)) #input to calc_wmd should be the total number of OTUs - will calculate for 1:input 
+wmd_c2n_COI$namedotu <- taxa_names(stn34_COI_n)
+wmd_c2n_COI$stn34N_sum <- taxa_sums(stn34_COI_n)
+wmd_c2n_COI$stn34N_nsamples <- taxa_sums(phyloseq_standardize_otu_abundance(stn34_COI_n, method = "pa"))
+
+subsampled_netsums <- t(data.frame(otu_table(stn7_COI_n)))
+net_depths <- daydepths
+wmd_c3n_COI <- calc_netmode(ntaxa(stn7_COI_n)) #input to calc_wmd should be the total number of OTUs - will calculate for 1:input 
+wmd_c3n_COI$namedotu <- taxa_names(stn7_COI_n)
+wmd_c3n_COI$stn7N_sum <- taxa_sums(stn7_COI_n)
+wmd_c3n_COI$stn7N_nsamples <- taxa_sums(phyloseq_standardize_otu_abundance(stn7_COI_n, method = "pa"))
+
+subsampled_netsums <- t(data.frame(otu_table(stn15_COI_d)))
+net_depths <- daydepths
+wmd_c1d_COI <- calc_netmode(ntaxa(stn15_COI_d)) #input to calc_wmd should be the total number of OTUs - will calculate for 1:input 
+wmd_c1d_COI$namedotu <- taxa_names(stn15_COI_d)
+wmd_c1d_COI$stn15D_sum <- taxa_sums(stn15_COI_d)
+wmd_c1d_COI$stn15D_nsamples <- taxa_sums(phyloseq_standardize_otu_abundance(stn15_COI_d, method = "pa"))
+
+subsampled_netsums <- t(data.frame(otu_table(stn34_COI_d)))
+net_depths <- daydepths
+wmd_c2d_COI <- calc_netmode(ntaxa(stn34_COI_d)) #input to calc_wmd should be the total number of OTUs - will calculate for 1:input 
+wmd_c2d_COI$namedotu <- taxa_names(stn34_COI_d)
+wmd_c2d_COI$stn34D_sum <- taxa_sums(stn34_COI_d)
+wmd_c2d_COI$stn34D_nsamples <- taxa_sums(phyloseq_standardize_otu_abundance(stn34_COI_d, method = "pa"))
+
+subsampled_netsums <- t(data.frame(otu_table(stn7_COI_d)))
+net_depths <- daydepths
+wmd_c3d_COI <- calc_netmode(ntaxa(stn7_COI_d)) #input to calc_wmd should be the total number of OTUs - will calculate for 1:input 
+wmd_c3d_COI$namedotu <- taxa_names(stn7_COI_d)
+wmd_c3d_COI$stn7D_sum <- taxa_sums(stn7_COI_d)
+wmd_c3d_COI$stn7D_nsamples <- taxa_sums(phyloseq_standardize_otu_abundance(stn7_COI_d, method = "pa"))
+
+taxasums <- data.frame(taxa_names(scratchCOI_rarefied), taxa_sums(scratchCOI_rarefied))
+colnames(taxasums) <- c("namedotu", "taxa_sums")
+
+taxapresence <- data.frame(taxa_names(scratchCOI_rarefied), taxa_sums(phyloseq_standardize_otu_abundance(scratchCOI_rarefied, method = "pa")))
+colnames(taxapresence) <- c("namedotu", "taxa_nsamples")
+
+daysums <- data.frame(taxa_names(day), taxa_sums(day))
+colnames(daysums) <- c("namedotu", "day_sums")
+
+nightsums <- data.frame(taxa_names(night), taxa_sums(night))
+colnames(nightsums) <- c("namedotu", "night_sums")
+
+calc_wmd <- function(n){
+  nightwmd <- numeric(n)
+  daywmd <- numeric(n)
+  namedotu <- character(n)
+  for (i in 1:n) {
+    nightwmd[i] <- ((subsampled_netsums[i,1]*net_depths[[1]]+subsampled_netsums[i,2]*net_depths[[2]]+subsampled_netsums[i,3]*net_depths[[3]]+subsampled_netsums[i,4]*net_depths[[4]]+subsampled_netsums[i,5]*net_depths[[5]]+subsampled_netsums[i,6]*net_depths[[6]]+subsampled_netsums[i,7]*net_depths[[7]]+subsampled_netsums[i,8]*net_depths[[8]])/(sum(subsampled_netsums[i,])))
+    namedotu[i] <- row.names(subsampled_netsums)[[i]]
+  }
+  data.frame(namedotu, nightwmd, stringsAsFactors = FALSE)
+}
+ZHANnets <- merge_samples(ZHAN, "target.mean", fun = "mean")
+netdepths <- c(900,700,500,300,150,75,38,13)
+netdepths <- rev(c(900,700,500,300,150,75,38,13))
+subsampled_netsums <- data.frame(t(otu_table(ZHANnets)))
+net_depths <- netdepths
+meandepths <- calc_wmd(ntaxa(ZHANnets)) 
+colnames(meandepths) <- c("namedotu", "meandepth")
+
+netdepths <- c(900,700,500,300,150,75,38,13)
+net_depths <- netdepths
+subsampled_netsums <- data.frame(t(otu_table(stn15_COI_n)))
+meandepths_15n <- calc_wmd(ntaxa(stn15_COI_n)) 
+colnames(meandepths_15n) <- c("namedotu", "meandepth")
+subsampled_netsums <- data.frame(t(otu_table(stn34_COI_n)))
+meandepths_34n <- calc_wmd(ntaxa(stn34_COI_n)) 
+colnames(meandepths_34n) <- c("namedotu", "meandepth")
+subsampled_netsums <- data.frame(t(otu_table(stn7_COI_n)))
+meandepths_7n <- calc_wmd(ntaxa(stn7_COI_n)) 
+colnames(meandepths_7n) <- c("namedotu", "meandepth")
+subsampled_netsums <- data.frame(t(otu_table(stn15_COI_d)))
+meandepths_15d <- calc_wmd(ntaxa(stn15_COI_d)) 
+colnames(meandepths_15d) <- c("namedotu", "meandepth")
+subsampled_netsums <- data.frame(t(otu_table(stn34_COI_d)))
+meandepths_34d <- calc_wmd(ntaxa(stn34_COI_d)) 
+colnames(meandepths_34d) <- c("namedotu", "meandepth")
+subsampled_netsums <- data.frame(t(otu_table(stn7_COI_d)))
+meandepths_7d <- calc_wmd(ntaxa(stn7_COI_d)) 
+colnames(meandepths_7d) <- c("namedotu", "meandepth")
+
+wmd_COI <- merge(wmd_c1n_COI, wmd_c2n_COI, by = "namedotu") %>%
+  merge(wmd_c3n_COI, by = "namedotu") %>%
+  merge(wmd_c1d_COI, by = "namedotu") %>%
+  merge(wmd_c2d_COI, by = "namedotu") %>%
+  merge(wmd_c3d_COI, by = "namedotu") %>% 
+  merge(taxasums, by = "namedotu")%>% 
+  merge(taxapresence, by = "namedotu") %>%
+  merge(daysums, by = "namedotu")%>% 
+  merge(nightsums, by = "namedotu")%>%
+  merge(meandepths, by = "namedotu") %>%
+  merge(meandepths_15n, by = "namedotu")%>%
+  merge(meandepths_34n, by = "namedotu")%>%
+  merge(meandepths_7n, by = "namedotu")%>%
+  merge(meandepths_15d, by = "namedotu")%>%
+  merge(meandepths_34d, by = "namedotu")%>%
+  merge(meandepths_7d, by = "namedotu")
+
+colnames(wmd_COI) <- c("name", "stn15N_modenet","stn15N_sum",  "stn15N_nsamples",  "stn34N_modenet","stn34N_sum","stn34N_nsamples",  "stn7N_modenet","stn7N_sum","stn7N_nsamples",  "stn15D_modenet","stn15D_sum","stn15D_nsamples", "stn34D_modenet", "stn34D_sum", "stn34D_nsamples", "stn7D_modenet","stn7D_sum","stn7D_nsamples", "taxa_sums", "taxa_nsamplestotal", "day_sums", "night_sums", "meandepth", "meandepth15n", "meandepth34n", "meandepth7n", "meandepth15d", "meandepth34d", "meandepth7d")
+
+
+taxtabledata <- data.frame(tax_table(ZHAN))
+taxtabledata$name <- rownames(taxtabledata)
+
+wmd_COI <- merge(wmd_COI, taxtabledata, by = "name")
+wmd_COI
+
+#sanity check
+table(wmd_COI$day_sums+wmd_COI$night_sums == wmd_COI$taxa_sums)
+
+
+#### to classify taxa as epipelagic or mesopelagic
+
+wmd_COI$classification <- NA
+wmd_COI$classification[wmd_COI$meandepth >= 200] <- "Mesopelagic"
+wmd_COI$classification[wmd_COI$meandepth < 200] <- "Epipelagic"
+
+wmd_COI$stn15diff <- wmd_COI$stn15N_modenet - wmd_COI$stn15D_modenet #night net minus day net (N - D)  means that if night is larger than day (shallower > larger net number), then if this is positive, you're shallower at night - so regular dvm; if it's negative then day is larger than night, then the day net is shallower, so that's reverse dvm for a neg value
+wmd_COI$stn34diff <- wmd_COI$stn34N_modenet - wmd_COI$stn34D_modenet
+wmd_COI$stn7diff <- wmd_COI$stn7N_modenet - wmd_COI$stn7D_modenet
+
+#find the proportion between D/N for each station
+wmd_COI$stn15perc <- wmd_COI$stn15N_sum/wmd_COI$stn15D_sum
+wmd_COI$stn34perc <- wmd_COI$stn34N_sum/wmd_COI$stn34D_sum
+wmd_COI$stn7perc <- wmd_COI$stn7N_sum/wmd_COI$stn7D_sum
+
+wmd_COI$stn15pa <- rowSums(wmd_COI[,c("stn15N_sum", "stn15D_sum")], na.rm = TRUE)
+wmd_COI$stn15pa[wmd_COI$stn15pa > 0] <- 1
+wmd_COI$stn34pa <- rowSums(wmd_COI[,c("stn34N_sum","stn34D_sum")], na.rm = TRUE)
+wmd_COI$stn34pa[wmd_COI$stn34pa > 0] <- 1
+wmd_COI$stn7pa <- rowSums(wmd_COI[,c("stn7N_sum","stn7D_sum")], na.rm = TRUE)
+wmd_COI$stn7pa[wmd_COI$stn7pa > 0] <- 1
+
+wmd_COI$nstations <- rowSums(wmd_COI[,c("stn15pa", "stn34pa", "stn7pa")] > 0, na.rm = TRUE)
+
+```
+
+
+```{r station 7}
+###################################### redo classifications for each station independently ##################### 
+## 1) first we'll make an empty column - ideally these will all be gone at the end of this
+wmd_COI$migratory_stat7 <- "empty"
+wmd_COI$migratory_stat7[(rowSums(wmd_COI[ , c("stn7N_sum", "stn7D_sum")], na.rm = T)) > 0] <- "unknown"
+
+minoccur <- sum(wmd_COI$stn7N_sum, wmd_COI$stn7D_sum)/10000 #minimum occurrence is 0.01% of the total number of reads for the cycle
+
+### 2) now, let's define non-migratory taxa as the ones the net difference is < 2 and > -2
+wmd_COI$migratory_stat7[(wmd_COI$stn7diff < 2 & wmd_COI$stn7diff > -2) & wmd_COI$taxa_sums >= minoccur] <- "non-migratory" 
+
+
+### 3) and now reverse migratory - these will be taxa where at least one station has reverse dvm of at least 2 nets
+wmd_COI$migratory_stat7[wmd_COI$stn7diff <= -2] <- "rev.migratory" 
+
+
+### 4) okay, now define migratory - these will be taxa where at least one station has dvm of at least 2 nets
+wmd_COI$migratory_stat7[wmd_COI$stn7diff >= 2] <- "migratory" 
+
+### 5) next, we'll identify the rare ones
+wmd_COI$migratory_stat7[((wmd_COI$stn7N_nsamples <2 | wmd_COI$stn7D_nsamples <2) |  (wmd_COI$stn7N_nsamples + wmd_COI$stn7D_nsamples) <4 ) & wmd_COI$taxa_sums > minoccur ] <- "restricted"
+wmd_COI$migratory_stat7[(wmd_COI$stn15N_sum + wmd_COI$stn15D_sum) < minoccur] <- "rare"
+wmd_COI$migratory_stat7[(rowSums(wmd_COI[ , c("stn7N_sum", "stn7D_sum")], na.rm = T)) == 0] <- "empty"
+
+
+### 6) okay, for things that are abundant enough, let's rule out the ones where station 7 doesn't have an equal # of day/night reads 
+###if  differences are either greater than 2 or less than 0.5, and it's greater than the minimum occurrence, then it's uneven
+wmd_COI$migratory_stat7[(wmd_COI$stn7perc > 3 | wmd_COI$stn7perc < 0.3) & wmd_COI$taxa_sums >= minoccur] <- "uneven"#ah yes, the d/n difference for non-migratory taxa will come back as NA since I replaced the difference as NA if the proportions were too large or too small, we'll take that out
+
+
+table(wmd_COI$migratory_stat7)
+
+
+ggplot(wmd_COI, aes(x = stn7diff, y = taxa_sums, color = migratory_stat7)) + 
+  geom_point() +
+  theme_bw()+
+  geom_vline(xintercept = 0) +
+ # geom_segment(aes(y = minoccur-0.5, x = magnitude.mdo, yend = max(taxa_sums), xend = magnitude.mdo), color = "black")+
+ # geom_segment(aes(y = minoccur-0.5, x = -magnitude.mdo, yend = max(taxa_sums), xend = -magnitude.mdo), color = "black")+ 
+  geom_hline(yintercept = minoccur-0.5) + 
+  ylab("Read Count of OTU") + 
+  xlab("Rev.Migratory                     D/N difference Stn7 (# Nets)                         Migratory") + 
+  scale_y_log10() + facet_wrap(.~migratory_stat7)
+
+table(wmd_COI$migratory_stat7)
+
+
+```
+
+```{r station 15}
+###################################### redo classifications for each station independently ##################### 
+## 1) first we'll make an empty column - ideally these will all be gone at the end of this
+wmd_COI$migratory_stat15 <- "empty"
+wmd_COI$migratory_stat15[(rowSums(wmd_COI[ , c("stn15N_sum", "stn15D_sum")], na.rm = T)) > 0] <- "unknown"
+
+minoccur <- sum(wmd_COI$stn15N_sum, wmd_COI$stn15D_sum)/10000 #minimum occurrence is 0.01% of the total number of reads for the cycle
+
+
+### 2) now, let's define non-migratory taxa as the ones the net difference is < 3 and > -3
+wmd_COI$migratory_stat15[(wmd_COI$stn15diff < 2 & wmd_COI$stn15diff > -2) & wmd_COI$taxa_sums >= minoccur] <- "non-migratory" 
+
+
+### 3) and now reverse migratory - these will be taxa where at least one station has reverse dvm of at least 2 nets
+wmd_COI$migratory_stat15[wmd_COI$stn15diff <= -2] <- "rev.migratory" 
+
+
+### 4) okay, now define migratory - these will be taxa where at least one station has dvm of at least 2 nets
+wmd_COI$migratory_stat15[wmd_COI$stn15diff >= 2] <- "migratory" 
+
+
+### 5) next, we'll identify the rare ones
+wmd_COI$migratory_stat15[wmd_COI$stn15N_nsamples <2 | wmd_COI$stn15D_nsamples <2 | (wmd_COI$stn15N_nsamples+wmd_COI$stn15D_nsamples) <4] <- "restricted"
+wmd_COI$migratory_stat15[(wmd_COI$stn15N_sum + wmd_COI$stn15D_sum) < minoccur] <- "rare"
+wmd_COI$migratory_stat15[(rowSums(wmd_COI[ , c("stn15N_sum", "stn15D_sum")], na.rm = T)) == 0] <- "empty"
+
+
+### 6) okay, for things that are abundant enough, let's rule out the ones where station 7 doesn't have an equal # of day/night reads 
+###if  differences are either greater than 2 or less than 0.5, and it's greater than the minimum occurrence, then it's uneven
+wmd_COI$migratory_stat15[(wmd_COI$stn15perc > 3 | wmd_COI$stn15perc < 0.3) & wmd_COI$taxa_sums >= minoccur] <- "uneven"#ah yes, the d/n difference for non-migratory taxa will come back as NA since I replaced the didfference as NA if the proportions were too large or too small, we'll take that out
+
+
+table(wmd_COI$migratory_stat15)
+
+
+ggplot(wmd_COI, aes(x = stn15diff, y = taxa_sums, color = migratory_stat15)) + 
+  geom_point() +
+  theme_bw()+
+  geom_vline(xintercept = 0) +
+ # geom_segment(aes(y = minoccur-0.5, x = magnitude.mdo, yend = max(taxa_sums), xend = magnitude.mdo), color = "black")+
+ # geom_segment(aes(y = minoccur-0.5, x = -magnitude.mdo, yend = max(taxa_sums), xend = -magnitude.mdo), color = "black")+ 
+  geom_hline(yintercept = minoccur-0.5) + 
+  ylab("Read Count of OTU") + 
+  xlab("Rev.Migratory                     D/N difference Stn15 (# Nets)                         Migratory") + 
+  scale_y_log10() + facet_wrap(.~migratory_stat15)
+
+table(wmd_COI$migratory_stat15)
+
+
+```
+
+```{r station 34}
+###################################### redo classifications for each station independently ##################### 
+## 1) first we'll make an empty column - ideally these will all be gone at the end of this
+wmd_COI$migratory_stat34 <- "empty"
+wmd_COI$migratory_stat34[(rowSums(wmd_COI[ , c("stn34N_sum", "stn34D_sum")], na.rm = T)) > 0] <- "unknown"
+
+minoccur <- sum(wmd_COI$stn34N_sum, wmd_COI$stn34D_sum)/10000 #minimum occurrence is 0.01% of the total number of reads for the cycle
+
+
+### 2) now, let's define non-migratory taxa as the ones the net difference is < 2 and > -2
+wmd_COI$migratory_stat34[(wmd_COI$stn34diff < 2 & wmd_COI$stn34diff > -2) & wmd_COI$taxa_sums >= minoccur] <- "non-migratory" 
+
+
+### 3) and now reverse migratory - these will be taxa where at least one station has reverse dvm of at least 2 nets
+wmd_COI$migratory_stat34[wmd_COI$stn34diff <= -2] <- "rev.migratory" 
+
+
+### 4) okay, now define migratory - these will be taxa where at least one station has dvm of at least 2 nets
+wmd_COI$migratory_stat34[wmd_COI$stn34diff >= 2] <- "migratory" 
+
+
+### 5) next, we'll identify the rare ones
+wmd_COI$migratory_stat34[wmd_COI$stn34N_nsamples <2 | wmd_COI$stn34D_nsamples <2 | (wmd_COI$stn34N_nsamples+wmd_COI$stn34D_nsamples) < 4] <- "restricted"
+wmd_COI$migratory_stat34[(wmd_COI$stn34N_sum + wmd_COI$stn34D_sum) < minoccur] <- "rare"
+wmd_COI$migratory_stat34[(rowSums(wmd_COI[ , c("stn34N_sum", "stn34D_sum")], na.rm = T)) == 0] <- "empty"
+
+
+### 6) okay, for things that are abundant enough, let's rule out the ones where station 7 doesn't have an equal # of day/night reads 
+###if  differences are either greater than 2 or less than 0.5, and it's greater than the minimum occurrence, then it's uneven
+wmd_COI$migratory_stat34[(wmd_COI$stn34perc > 3 | wmd_COI$stn34perc < 0.3) & wmd_COI$taxa_sums >= minoccur] <- "uneven"#ah yes, the d/n difference for non-migratory taxa will come back as NA since I replaced the difference as NA if the proportions were too large or too small, we'll take that out
+
+
+table(wmd_COI$migratory_stat34)
+
+
+ggplot(wmd_COI, aes(x = stn34diff, y = taxa_sums, color = migratory_stat34)) + 
+  geom_point() +
+  theme_bw()+
+  geom_vline(xintercept = 0) +
+ # geom_segment(aes(y = minoccur-0.5, x = magnitude.mdo, yend = max(taxa_sums), xend = magnitude.mdo), color = "black")+
+ # geom_segment(aes(y = minoccur-0.5, x = -magnitude.mdo, yend = max(taxa_sums), xend = -magnitude.mdo), color = "black")+ 
+  geom_hline(yintercept = minoccur-0.5) + 
+  ylab("Read Count of OTU") + 
+  xlab("Rev.Migratory                     D/N difference Stn34 (# Nets)                         Migratory") + 
+  scale_y_log10() + facet_wrap(.~migratory_stat34)
+
+table(wmd_COI$migratory_stat34)
+```
+
+```{r add back to tax table}
+wmd_COI$migratory <- "Non-Migratory"
+wmd_COI$migratory[wmd_COI$migratory_stat34 == "migratory" | wmd_COI$migratory_stat15 == "migratory" | wmd_COI$migratory_stat7 == "migratory"] <- "Migratory"
+wmd_COI$revmigratory <- "Non-Migratory"
+wmd_COI$revmigratory[wmd_COI$migratory_stat34 == "rev.migratory" | wmd_COI$migratory_stat15 == "rev.migratory" | wmd_COI$migratory_stat7 == "rev.migratory"] <- "Rev. Migratory"
+wmd_COI$anymigration <- "No Migration"
+wmd_COI$anymigration[wmd_COI$migratory == "Migratory" | wmd_COI$revmigratory == "Rev. Migratory"] <- "DVM"
+wmd_COI[wmd_COI == "NA"] <- NA
+
+taxonomic <- data.frame(tax_table(ZHAN))
+taxonomic$name <- rownames(taxonomic)
+
+wmd_plot <- merge(wmd_COI, taxonomic, by = "name")
+wmd_plot[wmd_plot == "nd"] <- NA
+taxtabletraits <- tax_table(wmd_plot)
+taxa_names(taxtabletraits) <- wmd_plot$name
+colnames(taxtabletraits) <- c(colnames(wmd_COI), colnames(taxonomic)[1:(length(colnames(taxonomic))-1)])
+taxtabletraits[taxtabletraits == "nd"] <- NA
+tax_table(ZHAN) <- taxtabletraits
+
+```
+
+
+```{r}
+save(ZHAN, COI, file="~/Documents/Chapter2/manuscript_analysis/R/workflow_for_github/COI&ZHAN_CleanZooplanktonMergedWithTraits.rdat")
+```
+
+
+```{r}
+load("~/Documents/Chapter2/manuscript_analysis/R/workflow_for_github/COI&ZHAN_CleanZooplanktonMergedWithTraits.rdat")
+COI <- subset_samples(COI, target.mean < 950) #removes mocks
+ZHAN <- subset_samples(ZHAN, target.mean < 950) #removes mocks
+COI <- subset_taxa(COI, taxa_sums(COI) > 0)
+ZHAN <- subset_taxa(ZHAN, taxa_sums(ZHAN) > 0)
+```
+
+```{r load data}
+ctd.dat <- read_excel("~/Documents/Chapter2/NH1208_CTDdata.xlsx")
+ctd.dat$Net <- NA
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 800 & ctd.dat$`Depth [salt water, m]` < 1001] <- "Net 1"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 600 & ctd.dat$`Depth [salt water, m]` < 801] <- "Net 2"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 400 & ctd.dat$`Depth [salt water, m]` < 601] <- "Net 3"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 200 & ctd.dat$`Depth [salt water, m]` < 401] <- "Net 4"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 100 & ctd.dat$`Depth [salt water, m]` < 201] <- "Net 5"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 50 & ctd.dat$`Depth [salt water, m]` < 101] <- "Net 6"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 25 & ctd.dat$`Depth [salt water, m]` < 51] <- "Net 7"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 0 & ctd.dat$`Depth [salt water, m]` < 26] <- "Net 8"
+
+
+ctd.dat <- ctd.dat[!is.na(ctd.dat$Net),]
+ctd.dat <- ctd.dat[ctd.dat$Station %in% c(7,15,34),]
+
+ctd.dat_means <- ctd.dat %>% 
+  dplyr::group_by(Net, Station) %>% 
+  dplyr::mutate(MeanTemp = mean(`Temperature [ITS-90, deg C]`, na.rm=T)) %>%
+  dplyr::mutate(MeanSal = mean(`Salinity, Practical [PSU]`, na.rm=T)) %>%
+  dplyr::mutate(MeanFluor = mean(`Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]`, na.rm=T)) %>%
+  dplyr::mutate(MeanOxy = mean(`Oxygen, SBE 43 [umol/kg]`, na.rm=T)) %>%
+  
+  dplyr::mutate(MaxTemp = max(`Temperature [ITS-90, deg C]`, na.rm=T)) %>%
+  dplyr::mutate(MaxSal = max(`Salinity, Practical [PSU]`, na.rm=T)) %>%
+  dplyr::mutate(MaxFluor = max(`Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]`, na.rm=T)) %>%
+  dplyr::mutate(MaxOxy = max(`Oxygen, SBE 43 [umol/kg]`, na.rm=T)) %>%
+  
+  dplyr::mutate(MinTemp = min(`Temperature [ITS-90, deg C]`, na.rm=T)) %>%
+  dplyr::mutate(MinSal = min(`Salinity, Practical [PSU]`, na.rm=T)) %>%
+  dplyr::mutate(MinFluor = min(`Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]`, na.rm=T)) %>%
+  dplyr::mutate(MinOxy = min(`Oxygen, SBE 43 [umol/kg]`, na.rm=T)) %>%
+  ungroup %>% 
+  select(Net, Station, MeanTemp, MeanSal, MeanFluor, MeanOxy, MaxTemp, MaxSal, MaxFluor, MaxOxy, MinTemp, MinSal, MinFluor, MinOxy) %>%
+  distinct()
+  
+ggplot(ctd.dat) + 
+  geom_point(aes(y = `Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]`, x = `Depth [salt water, m]`, color = Station, group = Cast)) + 
+  geom_line(aes(y = `Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]`, x = `Depth [salt water, m]`, color = Station, group = Cast)) + 
+  scale_x_reverse() + 
+  xlim(150,0) + 
+  coord_flip() + 
+  facet_wrap(.~Station)
+
+ggplot(ctd.dat) + 
+  geom_point(aes(y = `Temperature [ITS-90, deg C]`, x = `Depth [salt water, m]`, color = Station, group = Cast)) + 
+  geom_line(aes(y = `Temperature [ITS-90, deg C]`, x = `Depth [salt water, m]`, color = Station, group = Cast)) + 
+  scale_x_reverse() + 
+  xlim(1000,0) + 
+  coord_flip() + 
+  facet_wrap(.~Station)
+
+#unique(ctd.dat$Cast)
+#[1] 11 12 13 23 24 25 56 57 58
+ggplot(ctd.dat) + 
+  geom_point(aes(y = `PAR/Irradiance, Biospherical/Licor`, x = `Depth [salt water, m]`, color = Station, group = Cast)) + 
+  geom_line(aes(y = `PAR/Irradiance, Biospherical/Licor`, x = `Depth [salt water, m]`, color = Station, group = Cast)) + 
+  scale_x_reverse() + 
+  xlim(150,0) + 
+  coord_flip() + 
+  facet_wrap(.~Station)
+```
+
+
+```{r station values}
+ctd.dat.good <- ctd.dat[ctd.dat$Cast %in% c(12,24,58),]
+stn7_oneperc <- min(ctd.dat.good$`Depth [salt water, m]`[ctd.dat.good$Station == 7 & ctd.dat.good$`PAR/Irradiance, Biospherical/Licor` < max(ctd.dat.good$`PAR/Irradiance, Biospherical/Licor`)/100])
+stn15_oneperc <- min(ctd.dat.good$`Depth [salt water, m]`[ctd.dat.good$Station == 15 & ctd.dat.good$`PAR/Irradiance, Biospherical/Licor` < max(ctd.dat.good$`PAR/Irradiance, Biospherical/Licor`)/100])
+stn34_oneperc <- min(ctd.dat.good$`Depth [salt water, m]`[ctd.dat.good$Station == 34 & ctd.dat.good$`PAR/Irradiance, Biospherical/Licor` < max(ctd.dat.good$`PAR/Irradiance, Biospherical/Licor`)/100])
+
+stn7_flmax <- min(ctd.dat.good$`Depth [salt water, m]`[ctd.dat.good$Station == 7 & ctd.dat.good$`Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]` == max(ctd.dat.good$`Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]`[ctd.dat.good$Station ==7])])
+stn15_flmax <- min(ctd.dat.good$`Depth [salt water, m]`[ctd.dat.good$Station == 15 & ctd.dat.good$`Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]` == max(ctd.dat.good$`Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]`[ctd.dat.good$Station ==15])])
+stn34_flmax <- min(ctd.dat.good$`Depth [salt water, m]`[ctd.dat.good$Station == 34 & ctd.dat.good$`Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]` == max(ctd.dat.good$`Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]`[ctd.dat.good$Station ==34])])
+
+ctd.dat_means$OnePercLightDepth <- NA
+ctd.dat_means$OnePercLightDepth[ctd.dat_means$Station == 7] <- stn7_oneperc
+ctd.dat_means$OnePercLightDepth[ctd.dat_means$Station == 15] <- stn15_oneperc
+ctd.dat_means$OnePercLightDepth[ctd.dat_means$Station == 34] <- stn34_oneperc
+
+ctd.dat_means$FlMaxDepth <- NA
+ctd.dat_means$FlMaxDepth[ctd.dat_means$Station == 7] <- stn7_flmax
+ctd.dat_means$FlMaxDepth[ctd.dat_means$Station == 15] <- stn15_flmax
+ctd.dat_means$FlMaxDepth[ctd.dat_means$Station == 34] <- stn34_flmax
+
+```
+
+```{r plot ctd data}
+ctd.dat <- read_excel("~/Documents/Chapter2/NH1208_CTDdata.xlsx")
+ctd.dat$Net <- NA
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 800 & ctd.dat$`Depth [salt water, m]` < 1001] <- "Net 1"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 600 & ctd.dat$`Depth [salt water, m]` < 801] <- "Net 2"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 400 & ctd.dat$`Depth [salt water, m]` < 601] <- "Net 3"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 200 & ctd.dat$`Depth [salt water, m]` < 401] <- "Net 4"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 100 & ctd.dat$`Depth [salt water, m]` < 201] <- "Net 5"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 50 & ctd.dat$`Depth [salt water, m]` < 101] <- "Net 6"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 25 & ctd.dat$`Depth [salt water, m]` < 51] <- "Net 7"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 0 & ctd.dat$`Depth [salt water, m]` < 26] <- "Net 8"
+
+
+ctd.dat <- ctd.dat[!is.na(ctd.dat$Net),]
+ctd.dat <- ctd.dat[ctd.dat$Station %in% c(7,15,34),]
+ctd.dat$Station_fact <- as.factor(ctd.dat$Station)
+ctd.dat$Province <- NA
+ctd.dat$Province[ctd.dat$Station_fact == 7] <- "Subarctic"
+ctd.dat$Province[ctd.dat$Station_fact == 15] <- "Transition"
+ctd.dat$Province[ctd.dat$Station_fact == 34] <- "Subtropical"
+
+fluorplot <- ggplot(ctd.dat[ctd.dat$Cast != 13,]) + 
+  #geom_point(aes(y = `Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]`, x = `Depth [salt water, m]`, color = Station_fact, group = Cast)) + 
+  geom_line(aes(y = `Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]`, x = `Depth [salt water, m]`, color = Province, group = Cast)) + 
+  scale_x_reverse() + 
+  xlim(150,0) + 
+  coord_flip() + 
+  ylab("Fluorescence") + 
+  xlab("Depth (m)")+ 
+  theme(axis.text.y = element_text(angle = 90, hjust = 0.5))
+
+oxyplot <- ggplot(ctd.dat[ctd.dat$`Depth [salt water, m]` > 50,]) + 
+ # geom_point(aes(y = `Oxygen, SBE 43 [umol/kg]`, x = `Depth [salt water, m]`, color = Station_fact, group = Cast)) + 
+  geom_line(aes(y = `Oxygen, SBE 43 [umol/kg]`, x = `Depth [salt water, m]`, color = Province, group = Cast)) + 
+  scale_x_reverse() + 
+  xlim(1000,0) + 
+  coord_flip() + 
+  ylab("Oxygen \n[umol/kg]")+ 
+  xlab("Depth (m)")+ 
+  theme(axis.text.y = element_text(angle = 90, hjust = 0.5))
+
+tempplot <- ggplot(ctd.dat) + 
+ # geom_point(aes(y = `Temperature [ITS-90, deg C]`, x = `Depth [salt water, m]`, color = Station_fact, group = Cast)) + 
+  geom_line(aes(y = `Temperature [ITS-90, deg C]`, x = `Depth [salt water, m]`, color = Province, group = Cast)) + 
+  scale_x_reverse() + 
+  xlim(1000,0) + 
+  coord_flip() +
+  ylab("Temperature \n[deg C]")+ 
+  xlab("Depth (m)") + 
+  theme(axis.text.y = element_text(angle = 90, hjust = 0.5))
+
+
+envplots <- ggarrange(fluorplot + xlab(NULL), oxyplot + xlab(NULL), tempplot + xlab(NULL), ncol = 3, nrow = 1, align = "hv", common.legend = TRUE, legend = "none")
+envplots <- annotate_figure(envplots, left = text_grob("Depth (m)", rot = 90))
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/workflow_for_github/plots/environ_CTDtraces.jpeg", height =5.5, width = 4, unit = "in", quality = 100, res = 300)
+envplots
+dev.off()
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/workflow_for_github/plots/environ_CTDtraces.pdf", height =5.5, width = 4)
+envplots
+dev.off()
+```
+
+
+```{r add enviro data to phyloseqs}
+COIsampdat <- data.frame(sample_data(COI))
+COIsampdat$Net <- paste("Net", COIsampdat$Net)
+COIsampdat$merge <- paste(COIsampdat$Net, COIsampdat$Station)
+ctd.dat_means$merge <- paste(ctd.dat_means$Net, ctd.dat_means$Station)
+
+COIsampdat <- merge(COIsampdat, ctd.dat_means, by.x = "merge", by.y = "merge")
+colnames(COIsampdat)[colnames(COIsampdat) %in% c("Station.x", "Net.x")] <- c("Station", "Net")
+COIsampdat$latitude <- NA
+COIsampdat$latitude[COIsampdat$Tow == "7"] <- 46.99891-0.18
+COIsampdat$latitude[COIsampdat$Tow == "8"] <- 47.021723+0.18
+COIsampdat$latitude[COIsampdat$Tow == "11"] <- 43.003288-0.18
+COIsampdat$latitude[COIsampdat$Tow == "12"] <- 43.096472+0.18
+COIsampdat$latitude[COIsampdat$Tow == "25"] <- 33.505167-0.18
+COIsampdat$latitude[COIsampdat$Tow == "26"] <- 33.588738+0.18
+COIsampdatphylo <- sample_data(COIsampdat)
+sample_names(COIsampdatphylo) <- COIsampdat$Sample_ID
+COI_otutable <- otu_table(COI)
+COI_taxtable <- tax_table(COI) 
+COI <- merge_phyloseq(COIsampdatphylo, COI_otutable, COI_taxtable)
+
+ZHANsampdat <- data.frame(sample_data(ZHAN))
+ZHANsampdat$Net <- paste("Net", ZHANsampdat$Net)
+ZHANsampdat$merge <- paste(ZHANsampdat$Net, ZHANsampdat$Station)
+ctd.dat_means$merge <- paste(ctd.dat_means$Net, ctd.dat_means$Station)
+
+ZHANsampdat <- merge(ZHANsampdat, ctd.dat_means, by.x = "merge", by.y = "merge")
+colnames(ZHANsampdat)[colnames(ZHANsampdat) %in% c("Station.x", "Net.x")] <- c("Station", "Net")
+ZHANsampdat$latitude <- NA
+ZHANsampdat$latitude[ZHANsampdat$Tow == "7"] <- 46.99891-0.18
+ZHANsampdat$latitude[ZHANsampdat$Tow == "8"] <- 47.021723+0.18
+ZHANsampdat$latitude[ZHANsampdat$Tow == "11"] <- 43.003288-0.18
+ZHANsampdat$latitude[ZHANsampdat$Tow == "12"] <- 43.096472+0.18
+ZHANsampdat$latitude[ZHANsampdat$Tow == "25"] <- 33.505167-0.18
+ZHANsampdat$latitude[ZHANsampdat$Tow == "26"] <- 33.588738+0.18
+ZHANsampdatphylo <- sample_data(ZHANsampdat)
+sample_names(ZHANsampdatphylo) <- ZHANsampdat$Sample_ID
+ZHAN_otutable <- otu_table(ZHAN)
+ZHAN_taxtable <- tax_table(ZHAN) 
+ZHAN <- merge_phyloseq(ZHANsampdatphylo, ZHAN_otutable, ZHAN_taxtable)
+```
+
+
+
+```{r}
+save(ZHAN, COI, file="~/Documents/Chapter2/manuscript_analysis/R/workflow_for_github/COI&ZHAN_CleanZooplanktonMergedWithTraits_metadata.rdat")
+
+```
+
+
+## combine and reformat
+
+
+```{r}
+load("~/Documents/Chapter2/manuscript_analysis/R/workflow_for_github/COI&ZHAN_CleanZooplanktonMergedWithTraits_metadata.rdat")
+COI <- subset_samples(COI, target.mean < 950) #removes mocks
+ZHAN <- subset_samples(ZHAN, target.mean < 950) #removes mocks
+COI <- subset_taxa(COI, taxa_sums(COI) > 0)
+ZHAN <- subset_taxa(ZHAN, taxa_sums(ZHAN) > 0)
+load("~/Documents/Chapter2/manuscript_analysis/R/workflow_for_github/Scripts/epiandmesoranges.Rdat")
+
+```
+
+make a phyloseq with 18S and COI together 
+```{r}
+#sample_names(ZHAN) <- sample_data(ZHAN)$Sample.ID
+together_sampledat <- sample_data(ZHAN) #shouldn't matter which we take
+zhan_otutable <- t(data.frame(otu_table(ZHAN)))
+leray_otutable <- t(data.frame(otu_table(COI)))
+zhan_taxtable <- data.frame(tax_table(ZHAN))
+leray_taxtable <- data.frame(tax_table(COI))
+zhan_taxtable$marker <- "18S"
+leray_taxtable$marker <- "COI"
+
+together_otutable <- rbind(zhan_otutable, leray_otutable)
+together_taxtable <- rbind(zhan_taxtable, leray_taxtable)
+#rownames(together_taxtable) <- together_taxtable$hash
+rownames(together_otutable) <- rownames(together_taxtable)
+
+together_sampledat <- sample_data(together_sampledat)
+together_otutable <- otu_table(together_otutable, taxa_are_rows = T)
+together_taxtable <- tax_table(as.matrix(together_taxtable)) #have to have "as.matrix" b/c otherwise the taxa names get lost - tax_table expects a character matrix, and it's possible that the numerical values here are also messing things up somehow?
+#taxa_names(together_taxtable) <- together_taxtable[,11]
+
+COMBINED <- merge_phyloseq(together_sampledat, together_otutable, together_taxtable)
+```
+
+
+```{r}
+epi_taxa <- subset_taxa(COMBINED, classification == "Epipelagic")
+meso_taxa <- subset_taxa(COMBINED, classification == "Mesopelagic")
+
+plot_bar(epi_taxa, x = "MeanTemp", fill = "Phylum", facet_grid = "marker")
+plot_bar(meso_taxa, x = "MeanTemp", fill = "Phylum", facet_grid = "marker")
+
+#calculate environmental range of each taxon
+n <- ntaxa(epi_taxa)
+taxonnamestocal <- taxa_names(epi_taxa)
+tempwtdmean <- numeric(n)
+tempmin <- numeric(n)
+tempmax <- numeric(n)
+temprange <- numeric(n)
+fluorwtdmean<- numeric(n)
+fluormin<- numeric(n)
+fluormax<- numeric(n)
+fluorrange<- numeric(n)
+oxywtdmean<- numeric(n)
+oxymin<- numeric(n)
+oxymax<- numeric(n)
+oxyrange<- numeric(n)
+salwtdmean<- numeric(n)
+salmin<- numeric(n)
+salmax<- numeric(n)
+salrange<- numeric(n)
+for (i in 1:n){
+  nameoftaxa <- taxonnamestocal[i]
+  phyone <- subset_taxa(epi_taxa, taxa_names(epi_taxa) %in% nameoftaxa)
+  phyone <- subset_samples(phyone, sample_sums(phyone) > (taxa_sums(phyone)[1]*.01) )
+  tempwtdmean[i] <- weighted.mean((sample_data(phyone)$MeanTemp), t(data.frame((otu_table(phyone)))))
+  tempmin[i] <- min((sample_data(phyone)$MeanTemp))
+  tempmax[i] <- max((sample_data(phyone)$MeanTemp))
+  temprange[i] <- tempmax[i] - tempmin[i]
+  
+  fluorwtdmean[i] <- weighted.mean((sample_data(phyone)$MeanFluor), t(data.frame((otu_table(phyone)))))
+  fluormin[i] <- min((sample_data(phyone)$MeanFluor))
+  fluormax[i] <- max((sample_data(phyone)$MeanFluor))
+  fluorrange[i] <- fluormax[i] - fluormin[i]
+  
+  oxywtdmean[i] <- weighted.mean((sample_data(phyone)$MeanOxy), t(data.frame((otu_table(phyone)))))
+  oxymin[i] <- min((sample_data(phyone)$MeanOxy))
+  oxymax[i] <- max((sample_data(phyone)$MeanOxy))
+  oxyrange[i] <- oxymax[i] - oxymin[i]
+  
+  salwtdmean[i] <- weighted.mean((sample_data(phyone)$MeanSal), t(data.frame((otu_table(phyone)))))
+  salmin[i] <- min((sample_data(phyone)$MeanSal))
+  salmax[i] <- max((sample_data(phyone)$MeanSal))
+  salrange[i] <- salmax[i] - salmin[i]
+}
+epiranges <-  data.frame(taxonnamestocal, tempwtdmean, tempmin, tempmax, temprange, fluorwtdmean, fluormin, fluormax, fluorrange, oxywtdmean, oxymin, oxymax, oxyrange, salwtdmean, salmin, salmax, salrange)
+#epirangesnonzero <- epiranges[epiranges$temprange > 0,]
+multisamplesamples <- taxa_names(epi_taxa)[tax_table(epi_taxa)[,c("taxa_nsamplestotal")] > 1]
+epirangesnonzero <- epiranges[epiranges$taxonnamestocal %in% multisamplesamples,]
+
+
+n <- ntaxa(meso_taxa)
+taxonnamestocal <- taxa_names(meso_taxa)
+tempwtdmean <- numeric(n)
+tempmin <- numeric(n)
+tempmax <- numeric(n)
+temprange <- numeric(n)
+fluorwtdmean<- numeric(n)
+fluormin<- numeric(n)
+fluormax<- numeric(n)
+fluorrange<- numeric(n)
+oxywtdmean<- numeric(n)
+oxymin<- numeric(n)
+oxymax<- numeric(n)
+oxyrange<- numeric(n)
+salwtdmean<- numeric(n)
+salmin<- numeric(n)
+salmax<- numeric(n)
+salrange<- numeric(n)
+for (i in 1:n){
+  nameoftaxa <- taxonnamestocal[i]
+  phyone <- subset_taxa(meso_taxa, taxa_names(meso_taxa) %in% nameoftaxa)
+  phyone <- subset_samples(phyone, sample_sums(phyone) > (taxa_sums(phyone)[1]*.01) )
+  tempwtdmean[i] <- weighted.mean((sample_data(phyone)$MeanTemp), t(data.frame((otu_table(phyone)))))
+  tempmin[i] <- min((sample_data(phyone)$MeanTemp))
+  tempmax[i] <- max((sample_data(phyone)$MeanTemp))
+  temprange[i] <- tempmax[i] - tempmin[i]
+  
+  fluorwtdmean[i] <- weighted.mean((sample_data(phyone)$MeanFluor), t(data.frame((otu_table(phyone)))))
+  fluormin[i] <- min((sample_data(phyone)$MeanFluor))
+  fluormax[i] <- max((sample_data(phyone)$MeanFluor))
+  fluorrange[i] <- fluormax[i] - fluormin[i]
+  
+  oxywtdmean[i] <- weighted.mean((sample_data(phyone)$MeanOxy), t(data.frame((otu_table(phyone)))))
+  oxymin[i] <- min((sample_data(phyone)$MeanOxy))
+  oxymax[i] <- max((sample_data(phyone)$MeanOxy))
+  oxyrange[i] <- oxymax[i] - oxymin[i]
+  
+  salwtdmean[i] <- weighted.mean((sample_data(phyone)$MeanSal), t(data.frame((otu_table(phyone)))))
+  salmin[i] <- min((sample_data(phyone)$MeanSal))
+  salmax[i] <- max((sample_data(phyone)$MeanSal))
+  salrange[i] <- salmax[i] - salmin[i]
+}
+mesoranges <-  data.frame(taxonnamestocal, tempwtdmean, tempmin, tempmax, temprange, fluorwtdmean, fluormin, fluormax, fluorrange, oxywtdmean, oxymin, oxymax, oxyrange, salwtdmean, salmin, salmax, salrange)
+multisamplesamples <- taxa_names(meso_taxa)[tax_table(meso_taxa)[,c("taxa_nsamplestotal")] > 1]
+mesorangesnonzero <- mesoranges[mesoranges$taxonnamestocal %in% multisamplesamples,]
+
+save(mesoranges, epiranges, mesorangesnonzero, epirangesnonzero, file = "epiandmesoranges.Rdat")
+```
+
+
+
+
+```{r data reformat}
+head(mesoranges) #environmental tolerances of mesopelagic taxa
+head(epiranges) #environmental tolerance of epipelagic taxa
+taxonomicmetadata <- data.frame(tax_table(COMBINED))
+alltaxaranges <- merge(rbind(mesoranges, epiranges), taxonomicmetadata, by.x="taxonnamestocal", by.y="name")
+alltaxaranges[,c(2:46,59,60,68:77)] <- sapply(alltaxaranges[,c(2:46,59,60,68:77)], as.numeric)
+alltaxaranges <- alltaxaranges[alltaxaranges$nstations != 0,]
+```
+
+
+```{r}
+save(ZHAN, COI, alltaxaranges, COMBINED, file="~/Documents/Chapter2/manuscript_analysis/R/workflow_for_github/COI&ZHAN_formanuscript.rdat")
+
+```
+

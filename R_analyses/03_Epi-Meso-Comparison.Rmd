@@ -1,0 +1,855 @@
+---
+title: "03_Epi-Meso-Comparison"
+output: html_document
+date: "2023-02-16"
+---
+
+
+```{r make epi and meso phyloseqs}
+COMBINED_epi <- subset_samples(COMBINED, stratum == "Epipelagic")
+COMBINED_meso <- subset_samples(COMBINED, stratum == "Mesopelagic")
+
+```
+## taxa shared between stations (upsettr)
+```{r by marker taxa shared}
+
+
+zhan_epi <- subset_samples(ZHAN, stratum == "Epipelagic")
+zhan_epi_merged <- merge_samples(zhan_epi, group = "Station.char.fac")
+zhan_epi_plot <- as.data.frame(t(otu_table(phyloseq_standardize_otu_abundance(zhan_epi_merged, method = "pa")))) %>% as("matrix") %>% as.data.frame() %>% UpSetR::upset(mainbar.y.label = "Taxa Shared Across Provinces (Epi)", sets.x.label = "Province Richness", sets = c("Subtropical", "Transition", "Subarctic"), keep.order = TRUE)
+zhan_epi_plot <- cowplot::plot_grid(NULL, zhan_epi_plot$Main_bar, zhan_epi_plot$Sizes, zhan_epi_plot$Matrix,
+                                    nrow=2, align='hv', rel_heights = c(3,2),
+                                    rel_widths = c(1.5,3))
+
+COI_epi <- subset_samples(COI, stratum == "Epipelagic")
+COI_epi_merged <- merge_samples(COI_epi, group = "Station.char.fac")
+coi_epi_plot <- as.data.frame(t(otu_table(phyloseq_standardize_otu_abundance(COI_epi_merged, method = "pa")))) %>% as("matrix") %>% as.data.frame() %>% UpSetR::upset(mainbar.y.label = "Taxa Shared Across Provinces (Epi)", sets.x.label = "Province Richness", sets = c("Subtropical", "Transition", "Subarctic"), keep.order = TRUE)
+coi_epi_plot <- cowplot::plot_grid(NULL, coi_epi_plot$Main_bar, coi_epi_plot$Sizes, coi_epi_plot$Matrix,
+                                   nrow=2, align='hv', rel_heights = c(3,2),
+                                   rel_widths = c(1.5,3))
+
+
+zhan_meso <- subset_samples(ZHAN, stratum == "Mesopelagic")
+zhan_meso_merged <- merge_samples(zhan_meso, group = "Station.char.fac")
+zhan_meso_plot <- as.data.frame(t(otu_table(phyloseq_standardize_otu_abundance(zhan_meso_merged, method = "pa")))) %>% as("matrix") %>% as.data.frame() %>% UpSetR::upset(mainbar.y.label = "Taxa Shared Across Provinces (Meso)", sets.x.label = "Province Richness", sets = c("Subtropical", "Transition", "Subarctic"), keep.order = TRUE)
+zhan_meso_plot <- cowplot::plot_grid(NULL, zhan_meso_plot$Main_bar, zhan_meso_plot$Sizes, zhan_meso_plot$Matrix,
+                                     nrow=2, align='hv', rel_heights = c(3,2),
+                                     rel_widths = c(1.5,3))
+
+COI_meso <- subset_samples(COI, stratum == "Mesopelagic")
+COI_meso_merged <- merge_samples(COI, group = "Station.char.fac")
+coi_meso_plot <- as.data.frame(t(otu_table(phyloseq_standardize_otu_abundance(COI_meso_merged, method = "pa")))) %>% as("matrix") %>% as.data.frame() %>% UpSetR::upset(mainbar.y.label = "Taxa Shared Across Provinces (Meso)", sets.x.label = "Province Richness", sets = c("Subtropical", "Transition", "Subarctic"), keep.order = TRUE)
+
+#intersections = list(list("Subtropical"), list("Transition"), list("Subarctic"), list("Subtropical", "Transition"), list("Transition", "Subarctic"), list("Subtropical", "Subarctic"), list("Subtropical", "Transition", "Subarctic"))
+coi_meso_plot <- cowplot::plot_grid(NULL, coi_meso_plot$Main_bar, coi_meso_plot$Sizes, coi_meso_plot$Matrix,
+                                    nrow=2, align='hv', rel_heights = c(3,2),
+                                    rel_widths = c(1.5,3))
+
+episharedplots <- ggarrange(zhan_epi_plot, coi_epi_plot, align = "hv", labels = c("c", "d"), ncol = 2, nrow = 1)
+mesosharedplots <- ggarrange(zhan_meso_plot, coi_meso_plot, align = "hv", labels = c("e", "f"), ncol = 2, nrow = 1)
+
+
+richness_shared_plots <- ggarrange(richnessplots, episharedplots, mesosharedplots, align = "hv", ncol = 1, nrow = 3, heights = c(1,2,2))
+richness_shared_plots
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/Shared_Taxa_Richness.pdf", height =8, width = 10)
+richness_shared_plots
+dev.off()
+
+```
+
+```{r markers together taxa shared}
+COMBINED_epi_merged <- merge_samples(COMBINED_epi, group = "Station.char.fac")
+sample_names(COMBINED_epi_merged)[sample_names(COMBINED_epi_merged) == "Subarctic"] <- c( "Sub-A")
+sample_names(COMBINED_epi_merged)[sample_names(COMBINED_epi_merged) == "Transition"] <- c("Trans")
+sample_names(COMBINED_epi_merged)[sample_names(COMBINED_epi_merged) == "Subtropical"] <- c("Sub-T")
+
+epi_all_plot <- as.data.frame(t(otu_table(phyloseq_standardize_otu_abundance(COMBINED_epi_merged, method = "pa")))) %>% as("matrix") %>% as.data.frame() %>% UpSetR::upset(mainbar.y.label = "Taxa Observed in the Epipelagic", sets.x.label = "Province \nRichness", sets = c("Sub-T", "Trans", "Sub-A"), keep.order = TRUE, mainbar.y.max = 600)
+#epi_all_plot <- epi_all_plot + theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+epi_all_plot_cow <- cowplot::plot_grid(NULL, epi_all_plot$Main_bar, epi_all_plot$Sizes, epi_all_plot$Matrix,
+                                       nrow=2, align='hv', rel_heights = c(3,2),
+                                       rel_widths = c(1,2))
+epi_all_plot_gg <- ggarrange(NULL, epi_all_plot$Main_bar, epi_all_plot$Sizes, epi_all_plot$Matrix,
+                             nrow=2, ncol = 2, align='hv', heights = c(3,2),
+                             widths = c(1,2))
+epi_all_plot_gg_spacing <- ggarrange(
+  epi_all_plot$Main_bar, 
+  ggplot() + theme_void(),
+  epi_all_plot$Matrix,
+  nrow = 3,
+  ncol = 1,
+  #widths = c(1, -0.05, 2),
+  heights = c(3, -0.1, 1),
+  align = 'hv')
+
+
+COMBINED_meso_merged <- merge_samples(COMBINED_meso, group = "Station.char.fac")
+sample_names(COMBINED_meso_merged)[sample_names(COMBINED_meso_merged) == "Subarctic"] <- c( "Sub-A")
+sample_names(COMBINED_meso_merged)[sample_names(COMBINED_meso_merged) == "Transition"] <- c("Trans")
+sample_names(COMBINED_meso_merged)[sample_names(COMBINED_meso_merged) == "Subtropical"] <- c("Sub-T")
+meso_all_plot <- as.data.frame(t(otu_table(phyloseq_standardize_otu_abundance(COMBINED_meso_merged, method = "pa")))) %>% as("matrix") %>% as.data.frame() %>%  UpSetR::upset(mainbar.y.label = "Taxa Observed in the Mesopelagic", sets.x.label = "Province \nRichness", sets = c("Sub-T", "Trans", "Sub-A"), keep.order = TRUE, mainbar.y.max = 600)
+meso_all_plot_cow <- cowplot::plot_grid(NULL, meso_all_plot$Main_bar, meso_all_plot$Sizes, meso_all_plot$Matrix,
+                                        nrow=2, align='hv', rel_heights = c(3,2),
+                                        rel_widths = c(1,2))
+meso_all_plot_gg <- ggarrange(NULL, meso_all_plot$Main_bar, meso_all_plot$Sizes, meso_all_plot$Matrix,
+                              nrow=2, ncol = 2, align='hv', heights = c(3,2),
+                              widths = c(1,2))
+meso_all_plot_gg_spacing <- ggarrange(
+  meso_all_plot$Main_bar, 
+  ggplot() + theme_void(),
+  meso_all_plot$Matrix,
+  nrow = 3,
+  ncol = 1,
+  #widths = c(1, -0.05, 2),
+  heights = c(3, -0.1, 1),
+  align = 'hv')
+
+
+COMBINED_fulldepth_merged <- merge_samples(COMBINED, group = "Station.char.fac")
+sample_names(COMBINED_fulldepth_merged)[sample_names(COMBINED_fulldepth_merged) == "Subarctic"] <- c( "Sub-A")
+sample_names(COMBINED_fulldepth_merged)[sample_names(COMBINED_fulldepth_merged) == "Transition"] <- c("Trans")
+sample_names(COMBINED_fulldepth_merged)[sample_names(COMBINED_fulldepth_merged) == "Subtropical"] <- c("Sub-T")
+full_all_plot <- as.data.frame(t(otu_table(phyloseq_standardize_otu_abundance(COMBINED_fulldepth_merged, method = "pa")))) %>% as("matrix") %>% as.data.frame() %>%  UpSetR::upset(mainbar.y.label = "Taxa Observed from 0-1000m", sets.x.label = "Province \nRichness", sets = c("Sub-T", "Trans", "Sub-A"), keep.order = TRUE, mainbar.y.max = 600)
+full_all_plot_cow <- cowplot::plot_grid(NULL, full_all_plot$Main_bar, full_all_plot$Sizes, full_all_plot$Matrix,
+                                        nrow=2, align='hv', rel_heights = c(3,2),
+                                        rel_widths = c(1,2))
+full_all_plot_gg <- ggarrange(NULL, full_all_plot$Main_bar, full_all_plot$Sizes, full_all_plot$Matrix,
+                              nrow=2, ncol = 2, align='hv', heights = c(3,2),
+                              widths = c(1,2))
+full_all_plot_gg_spacing <- ggarrange(
+  full_all_plot$Main_bar, 
+  ggplot() + theme_void(),
+  full_all_plot$Matrix,
+  nrow = 3,
+  ncol = 1,
+  #widths = c(1, -0.05, 2),
+  heights = c(3, -0.1, 1),
+  align = 'hv')
+
+
+
+combinedmarkersplots <- ggarrange(epi_all_plot_gg_spacing, meso_all_plot_gg_spacing, labels = c("b", "c"), ncol = 2, nrow = 1)
+combinedmarkersplots <- ggarrange(p_both, combinedmarkersplots, labels = c("a", ""), ncol = 1, nrow = 2)
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/Shared_Taxa_Richness_markerstogether.pdf", height =6, width = 6.5)
+combinedmarkersplots
+dev.off()
+
+
+combinedmarkersplotscolumns <- ggarrange(p_both + coord_flip()+ theme(legend.position="bottom", legend.box = "horizontal", legend.direction = "vertical", legend.title = element_text(size=11), legend.text = element_text(size=8)) + theme(axis.text.y = element_text(angle = 90, hjust = 0.5)) + ylim(0,550), epi_all_plot_gg_spacing, meso_all_plot_gg_spacing, labels = c("a", "b", "c"), ncol = 3, nrow = 1)
+combinedmarkersplotscolumns
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/Shared_Taxa_Richness_markerstogether_cols.pdf", height =4, width = 6.5)
+combinedmarkersplotscolumns
+dev.off()
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/Shared_Taxa_Richness_markerstogether_cols.jpeg", height =4, width = 6.5, unit = "in", quality = 100, res = 300)
+combinedmarkersplotscolumns
+dev.off()
+
+
+shared_2 <- ggarrange(epi_all_plot_gg_spacing, meso_all_plot_gg_spacing, labels = c("a", "b"), ncol = 2, nrow = 1)
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/Shared_Taxa_Richness_markerstogether_2.pdf", height =4, width = 6.5)
+shared_2
+dev.off()
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/Shared_Taxa_Richness_markerstogether_2.jpeg", height =4, width = 6.5, unit = "in", quality = 100, res = 300)
+shared_2
+dev.off()
+
+
+
+shared_3 <- ggarrange(full_all_plot_gg_spacing,epi_all_plot_gg_spacing, meso_all_plot_gg_spacing, labels = c("a", "b", "c"), ncol = 3, nrow = 1)
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/Shared_Taxa_Richness_markerstogether_3.pdf", height =3.5, width = 5)
+shared_3
+dev.off()
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/Shared_Taxa_Richness_markerstogether_3.jpeg", height =3.5, width = 5, unit = "in", quality = 100, res = 300)
+shared_3
+dev.off()
+
+```
+
+```{r}
+COMBINED_epitaxa_merged <- merge_samples(subset_taxa(COMBINED, classification == "Epipelagic"), group = "Station.char.fac")
+sample_names(COMBINED_epitaxa_merged)[sample_names(COMBINED_epitaxa_merged) == "Subarctic"] <- c( "Sub-A")
+sample_names(COMBINED_epitaxa_merged)[sample_names(COMBINED_epitaxa_merged) == "Transition"] <- c("Trans")
+sample_names(COMBINED_epitaxa_merged)[sample_names(COMBINED_epitaxa_merged) == "Subtropical"] <- c("Sub-T")
+
+epi_all_plot <- as.data.frame(t(otu_table(phyloseq_standardize_otu_abundance(COMBINED_epitaxa_merged, method = "pa")))) %>% as("matrix") %>% as.data.frame() %>% UpSetR::upset(mainbar.y.label = "Epipelagic Taxa Shared \nAcross Provinces", sets.x.label = "Province \nRichness", sets = c("Sub-T", "Trans", "Sub-A"), keep.order = TRUE)
+#epi_all_plot <- epi_all_plot + theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+epi_all_plot_cow <- cowplot::plot_grid(NULL, epi_all_plot$Main_bar, epi_all_plot$Sizes, epi_all_plot$Matrix,
+                                       nrow=2, align='hv', rel_heights = c(3,2),
+                                       rel_widths = c(1,2))
+epi_all_plot_gg <- ggarrange(NULL, epi_all_plot$Main_bar, epi_all_plot$Sizes, epi_all_plot$Matrix,
+                             nrow=2, ncol = 2, align='hv', heights = c(3,2),
+                             widths = c(1,2))
+epitaxa_all_plot_gg_spacing <- ggarrange(
+  epi_all_plot$Main_bar, 
+  ggplot() + theme_void(),
+  epi_all_plot$Matrix,
+  nrow = 3,
+  ncol = 1,
+  #widths = c(1, -0.05, 2),
+  heights = c(3, -0.1, 1),
+  align = 'hv')
+
+
+COMBINED_mesotaxa_merged <- merge_samples(subset_taxa(COMBINED, classification == "Epipelagic"), group = "Station.char.fac")
+sample_names(COMBINED_mesotaxa_merged)[sample_names(COMBINED_mesotaxa_merged) == "Subarctic"] <- c( "Sub-A")
+sample_names(COMBINED_mesotaxa_merged)[sample_names(COMBINED_mesotaxa_merged) == "Transition"] <- c("Trans")
+sample_names(COMBINED_mesotaxa_merged)[sample_names(COMBINED_mesotaxa_merged) == "Subtropical"] <- c("Sub-T")
+meso_all_plot <- as.data.frame(t(otu_table(phyloseq_standardize_otu_abundance(COMBINED_mesotaxa_merged, method = "pa")))) %>% as("matrix") %>% as.data.frame() %>%  UpSetR::upset(mainbar.y.label = "Mesopelagic Taxa Shared \nAcross Provinces", sets.x.label = "Province \nRichness", sets = c("Sub-T", "Trans", "Sub-A"), keep.order = TRUE)
+meso_all_plot_cow <- cowplot::plot_grid(NULL, meso_all_plot$Main_bar, meso_all_plot$Sizes, meso_all_plot$Matrix,
+                                        nrow=2, align='hv', rel_heights = c(3,2),
+                                        rel_widths = c(1,2))
+meso_all_plot_gg <- ggarrange(NULL, meso_all_plot$Main_bar, meso_all_plot$Sizes, meso_all_plot$Matrix,
+                              nrow=2, ncol = 2, align='hv', heights = c(3,2),
+                              widths = c(1,2))
+mesotaxa_all_plot_gg_spacing <- ggarrange(
+  meso_all_plot$Main_bar, 
+  ggplot() + theme_void(),
+  meso_all_plot$Matrix,
+  nrow = 3,
+  ncol = 1,
+  #widths = c(1, -0.05, 2),
+  heights = c(3, -0.1, 1),
+  align = 'hv')
+
+
+
+
+shared_4 <- ggarrange(epi_all_plot_gg_spacing, meso_all_plot_gg_spacing, epitaxa_all_plot_gg_spacing, mesotaxa_all_plot_gg_spacing, labels = "auto", ncol = 2, nrow = 2)
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/Shared_Taxa_Richness_markerstogether_4.pdf", height =6, width = 6.5)
+shared_4
+dev.off()
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/Shared_Taxa_Richness_markerstogether_4.jpeg", height =6, width = 6.5, unit = "in", quality = 100, res = 300)
+shared_4
+dev.off()
+
+
+```
+
+
+```{r plot this to combine upsettr with violin}
+
+COMBINED_epi_merged <- merge_samples(COMBINED_epi, group = "Station.char.fac")
+sample_names(COMBINED_epi_merged)[sample_names(COMBINED_epi_merged) == "Subarctic"] <- c( "Sub-A")
+sample_names(COMBINED_epi_merged)[sample_names(COMBINED_epi_merged) == "Transition"] <- c("Trans")
+sample_names(COMBINED_epi_merged)[sample_names(COMBINED_epi_merged) == "Subtropical"] <- c("Sub-T")
+
+epi_all_plot <- as.data.frame(t(otu_table(phyloseq_standardize_otu_abundance(COMBINED_epi_merged, method = "pa")))) %>% as("matrix") %>% as.data.frame() %>% UpSetR::upset(mainbar.y.label = "Taxa Observed in the Epipelagic", sets.x.label = "Province \nRichness", sets = c("Sub-T", "Trans", "Sub-A"), keep.order = TRUE, mainbar.y.max = 600) #, main.bar.color = "#F8766D"
+#epi_all_plot <- epi_all_plot + theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+
+COMBINED_meso_merged <- merge_samples(COMBINED_meso, group = "Station.char.fac")
+sample_names(COMBINED_meso_merged)[sample_names(COMBINED_meso_merged) == "Subarctic"] <- c( "Sub-A")
+sample_names(COMBINED_meso_merged)[sample_names(COMBINED_meso_merged) == "Transition"] <- c("Trans")
+sample_names(COMBINED_meso_merged)[sample_names(COMBINED_meso_merged) == "Subtropical"] <- c("Sub-T")
+meso_all_plot <- as.data.frame(t(otu_table(phyloseq_standardize_otu_abundance(COMBINED_meso_merged, method = "pa")))) %>% as("matrix") %>% as.data.frame() %>%  UpSetR::upset(mainbar.y.label = "Taxa Observed in the Mesopelagic", sets.x.label = "Province \nRichness", sets = c("Sub-T", "Trans", "Sub-A"), keep.order = TRUE, mainbar.y.max = 600) # main.bar.color = "#00BFC4", sets.bar.color = "#00BFC4", matrix.color = "#00BFC4"
+
+
+
+COMBINED_fulldepth_merged <- merge_samples(COMBINED, group = "Station.char.fac")
+sample_names(COMBINED_fulldepth_merged)[sample_names(COMBINED_fulldepth_merged) == "Subarctic"] <- c( "Sub-A")
+sample_names(COMBINED_fulldepth_merged)[sample_names(COMBINED_fulldepth_merged) == "Transition"] <- c("Trans")
+sample_names(COMBINED_fulldepth_merged)[sample_names(COMBINED_fulldepth_merged) == "Subtropical"] <- c("Sub-T")
+full_all_plot <- as.data.frame(t(otu_table(phyloseq_standardize_otu_abundance(COMBINED_fulldepth_merged, method = "pa")))) %>% as("matrix") %>% as.data.frame() %>%  UpSetR::upset(mainbar.y.label = "Taxa Observed from 0-1000m", sets.x.label = "Province \nRichness", sets = c("Sub-T", "Trans", "Sub-A"), keep.order = TRUE, mainbar.y.max = 600)
+
+
+epi_all_plot_gg_spacing_short <- ggarrange(
+  epi_all_plot$Main_bar, 
+  ggplot() + theme_void(),
+  epi_all_plot$Matrix,
+  nrow = 3,
+  ncol = 1,
+  #widths = c(1, -0.05, 2),
+  heights = c(2.5, -0.1, 1),
+  align = 'hv')
+
+
+meso_all_plot_gg_spacing_short <- ggarrange(
+  meso_all_plot$Main_bar, 
+  ggplot() + theme_void(),
+  meso_all_plot$Matrix,
+  nrow = 3,
+  ncol = 1,
+  #widths = c(1, -0.05, 2),
+  heights = c(2.5, -0.1, 1),
+  align = 'hv')
+
+
+full_all_plot_gg_spacing_short <- ggarrange(
+  full_all_plot$Main_bar, 
+  ggplot() + theme_void(),
+  full_all_plot$Matrix,
+  nrow = 3,
+  ncol = 1,
+  #widths = c(1, -0.05, 2),
+  heights = c(2.5, -0.1, 1),
+  align = 'hv')
+
+
+strata_provinces_barchar <- ggplot(alltaxaranges, aes(x = nstations, group = classification, fill = classification)) + 
+  geom_bar(position = position_dodge(0.5), width = 0.4)+ 
+  scale_fill_manual(values = c("grey70", "grey20"), name = "Depth Zone")+
+ #guides(fill=guide_legend(title="Depth Zone")) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5)) + 
+  xlab("Number of \nprovinces in which \neach taxon occurs") + 
+  ylab("Number of taxa (N)") +
+  theme(legend.position = "bottom",
+        legend.direction = "vertical",
+        axis.title = element_text(size=7),
+        legend.text = element_text(size = 7),
+        legend.title = element_text(size = 7),
+        axis.text = element_text(size = 7))
+strata_provinces_barchar
+
+
+shared_3upsetr_1violin <- ggarrange(full_all_plot_gg_spacing_short,epi_all_plot_gg_spacing_short, meso_all_plot_gg_spacing_short, strata_provinces_barchar, labels = c("a", "b", "c", "d"), ncol = 4, nrow = 1)
+shared_3upsetr_1violin
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/Shared_Taxa_Richness_markerstogether_with_totalnprov.pdf", height =3, width = 5)
+shared_3upsetr_1violin
+dev.off()
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/Shared_Taxa_Richness_markerstogether_with_totalnprov.jpeg", height =3, width = 5, unit = "in", quality = 100, res = 300)
+shared_3upsetr_1violin
+dev.off()
+```
+
+
+
+
+
+### Epi vs. Meso similarity (NMDS & beta dispersion)
+total community, epi vs. meso comparisons
+```{r jaccard}
+#nmds for leray
+normalized_leray_rarefied <- transform_sample_counts(COI, function(x) x / sum(x) )
+
+sample_data(normalized_leray_rarefied)$Station.fac <- as.factor(sample_data(normalized_leray_rarefied)$Station)
+sample_data(normalized_leray_rarefied)$Net.fac <- as.factor(sample_data(normalized_leray_rarefied)$Net)
+lc.ord1 <- ordinate(normalized_leray_rarefied, "NMDS", "jaccard", binary = TRUE)
+(p1 <- plot_ordination(normalized_leray_rarefied, lc.ord1, type="samples", color = "stratum", shape = "Station.char.fac"))
+#print(p1)
+(p1 <- p1 + 
+  stat_ellipse(type = "norm", linetype = 2, aes(group = stratum)) +
+  theme_bw() + 
+  ggtitle("COI - Jaccard")+ labs(color = "Stratum", shape = "Province"))
+plot_ordination(normalized_leray_rarefied, lc.ord1, type="samples", color = "Net.fac", shape = "Station.char.fac") + 
+  stat_ellipse(type = "norm", linetype = 2, aes(group = stratum)) +
+  theme_bw() + 
+  ggtitle("COI - Jaccard")+ labs(color = "Net", shape = "Province") + facet_wrap(.~stratum)
+
+#nmds for zhan
+normalized_zhan_rarefied <- transform_sample_counts(ZHAN, function(x) x / sum(x) )
+
+sample_data(normalized_zhan_rarefied)$Station.fac <- as.factor(sample_data(normalized_zhan_rarefied)$Station)
+sample_data(normalized_zhan_rarefied)$Net.fac <- as.factor(sample_data(normalized_zhan_rarefied)$Net)
+zc.ord1 <- ordinate(normalized_zhan_rarefied, "NMDS", "jaccard", binary = TRUE)
+p2 <- plot_ordination(normalized_zhan_rarefied, zc.ord1, type="samples", color = "stratum", shape = "Station.char.fac")
+#print(p2)
+(p2 <- p2 + 
+  stat_ellipse(type = "norm", linetype = 2, aes(group = stratum)) +
+  theme_bw() + 
+  ggtitle("18S - Jaccard")+ labs(color = "Stratum", shape = "Province"))
+plot_ordination(normalized_zhan_rarefied, zc.ord1, type="samples", color = "Net.fac", shape = "Station.char.fac") +
+  stat_ellipse(type = "norm", linetype = 2, aes(group = stratum)) +
+  theme_bw() + 
+  ggtitle("18S - Jaccard")+ labs(color = "Net", shape = "Province") +facet_wrap(.~stratum)
+
+
+#nmds for both together
+normalized_combined_rarefied <- transform_sample_counts(COMBINED, function(x) x / sum(x) )
+
+sample_data(normalized_combined_rarefied)$Station.fac <- as.factor(sample_data(normalized_combined_rarefied)$Station)
+sample_data(normalized_combined_rarefied)$Net.fac <- as.factor(sample_data(normalized_combined_rarefied)$Net)
+zc.ord1 <- ordinate(normalized_combined_rarefied, "NMDS", "jaccard", binary = TRUE)
+p3 <- plot_ordination(normalized_combined_rarefied, zc.ord1, type="samples", color = "stratum", shape = "Station.char.fac")
+#print(p2)
+(p3 <- p3 + 
+  stat_ellipse(type = "norm", linetype = 2, aes(group = stratum)) +
+  theme_bw() + 
+  ggtitle("Both - Jaccard")+ labs(color = "Stratum", shape = "Province"))
+plot_ordination(normalized_combined_rarefied, zc.ord1, type="samples", color = "Net.fac", shape = "Station.char.fac") +
+  stat_ellipse(type = "norm", linetype = 2, aes(group = stratum)) +
+  theme_bw() + 
+  ggtitle("Both - Jaccard")+ labs(color = "Net", shape = "Province") +facet_wrap(.~stratum)
+
+```
+
+```{r bray curtis}
+#nmds for leray
+normalized_leray_rarefied <- transform_sample_counts(COI, function(x) x / sum(x) )
+
+sample_data(normalized_leray_rarefied)$Station.fac <- as.factor(sample_data(normalized_leray_rarefied)$Station)
+sample_data(normalized_leray_rarefied)$Net.fac <- as.factor(sample_data(normalized_leray_rarefied)$Net)
+lc.ord1 <- ordinate(normalized_leray_rarefied, "NMDS", "bray")
+(p4 <- plot_ordination(normalized_leray_rarefied, lc.ord1, type="samples", color = "stratum", shape = "Station.char.fac"))
+#print(p1)
+(p4 <- p4 + 
+  stat_ellipse(type = "norm", linetype = 2, aes(group = stratum)) +
+  theme_bw() + 
+  ggtitle("COI - Bray Curtis")+ labs(color = "Stratum", shape = "Province"))
+plot_ordination(normalized_leray_rarefied, lc.ord1, type="samples", color = "Net.fac", shape = "Station.char.fac") + 
+  stat_ellipse(type = "norm", linetype = 2, aes(group = stratum)) +
+  theme_bw() + 
+  ggtitle("COI - Bray")+ labs(color = "Net", shape = "Province") + facet_wrap(.~stratum)
+
+#nmds for zhan
+normalized_zhan_rarefied <- transform_sample_counts(ZHAN, function(x) x / sum(x) )
+
+sample_data(normalized_zhan_rarefied)$Station.fac <- as.factor(sample_data(normalized_zhan_rarefied)$Station)
+sample_data(normalized_zhan_rarefied)$Net.fac <- as.factor(sample_data(normalized_zhan_rarefied)$Net)
+zc.ord1 <- ordinate(normalized_zhan_rarefied, "NMDS", "bray")
+p5 <- plot_ordination(normalized_zhan_rarefied, zc.ord1, type="samples", color = "stratum", shape = "Station.char.fac")
+#print(p2)
+(p5 <- p5 + 
+  stat_ellipse(type = "norm", linetype = 2, aes(group = stratum)) +
+  theme_bw() + 
+  ggtitle("18S - Bray Curtis")+ labs(color = "Stratum", shape = "Province"))
+plot_ordination(normalized_zhan_rarefied, zc.ord1, type="samples", color = "Net.fac", shape = "Station.char.fac") +
+  stat_ellipse(type = "norm", linetype = 2, aes(group = stratum)) +
+  theme_bw() + 
+  ggtitle("18S - Bray")+ labs(color = "Net", shape = "Province") +facet_wrap(.~stratum)
+
+
+#nmds for both together
+normalized_combined_rarefied <- transform_sample_counts(COMBINED, function(x) x / sum(x) )
+
+sample_data(normalized_combined_rarefied)$Station.fac <- as.factor(sample_data(normalized_combined_rarefied)$Station)
+sample_data(normalized_combined_rarefied)$Net.fac <- as.factor(sample_data(normalized_combined_rarefied)$Net)
+zc.ord1 <- ordinate(normalized_combined_rarefied, "NMDS", "bray")
+p6 <- plot_ordination(normalized_combined_rarefied, zc.ord1, type="samples", color = "stratum", shape = "Station.char.fac")
+#print(p2)
+(p6 <- p6 + 
+  stat_ellipse(type = "norm", linetype = 2, aes(group = stratum)) +
+  theme_bw() + 
+  ggtitle("Both - Bray Curtis")+ labs(color = "Depth zone", shape = "Province"))
+
+
+
+
+
+arranged <- ggarrange(p3, p6, ncol = 2, nrow = 1, align = "hv", common.legend = T, legend = "right")
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/NMDS_bothmarkers.pdf", height =4, width = 8)
+arranged
+dev.off()
+p3
+p6
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/NMDS_bothmarkers_Bray.pdf", height =3.8, width = 6.5)
+p6 + ggtitle("Bray Curtis Distance")
+dev.off()
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/NMDS_bothmarkers_Bray.jpeg", height = 3.8, width = 6.5, unit = "in", quality = 100, res = 300)
+p6 + ggtitle("Bray Curtis Distance")
+dev.off()
+p3
+p6
+```
+
+visually greater similarity in the mesopelagic, both with jaccard and bray curtis, with COI, 18S, or both together
+subtropical is further away 
+how to test this statistically? 
+PERMANOVA? 
+betadisp? 
+clustering/# of clusters? 
+
+```{r}
+
+ #betadisp statistical test for each
+ both.dist.matrix.bray <-
+   vegdist(round(t(otu_table(normalized_combined_rarefied))*1000), "jaccard")
+ groups <- as.matrix(sample_data(normalized_combined_rarefied)$stratum) # define the variable that separates groups
+ pathotype.disp <- betadisper(both.dist.matrix.bray, groups)# calculates the beta-dispersion for each group, when comparing 2 or more
+ pathotype.disp.anova <- anova(pathotype.disp)  # tests if centroid distances are significantly different from each other
+ pathotype.disp.anova
+chaotogetheranova <- pathotype.disp.anova$`Pr(>F)`
+
+# 
+ #betadisp statistical test 
+ both.dist.matrix.bray <-
+   vegdist(t(otu_table(normalized_combined_rarefied)), "bray")
+ groups <- as.matrix(sample_data(normalized_combined_rarefied)$stratum) # define the variable that separates groups
+ pathotype.disp <- betadisper(both.dist.matrix.bray, groups)# calculates the beta-dispersion for each group, when comparing 2 or more
+ pathotype.disp.anova <- anova(pathotype.disp)  # tests if distances to centroid  are significantly different from each other
+ pathotype.disp.anova
+ braytogetheranova <- pathotype.disp.anova$`Pr(>F)`
+
+```
+
+
+
+
+
+## Are epi or meso taxa more/less likely to be found in multiple stations or provinces?
+
+
+```{r are epipelagic or mesopelagic taxa more likely to be found across multiple provinces?}
+##stats
+testres <- kruskal.test(nstations ~ classification, alltaxaranges)
+testres
+testres_ph <- dunnTest(nstations ~ classification, alltaxaranges,
+                       method="bonferroni")
+testres_ph
+
+testres <- kruskal.test(taxa_nsamplestotal ~ classification, alltaxaranges)
+testres
+testres_ph <- dunnTest(taxa_nsamplestotal ~ classification, alltaxaranges,
+                       method="bonferroni")
+testres_ph
+
+##plots
+
+strata_samples <- ggplot(alltaxaranges, aes(x = classification, y = taxa_nsamplestotal, group = classification)) + 
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  ylab("Samples (N)") + 
+  xlab(NULL) + 
+  # theme(text = element_text(size = 9),
+  #      plot.title = element_text(size = 10))   +
+  stat_compare_means(method = "kruskal.test", method.args= list(alternative = "two.sided"), label.y = 55,
+                                          label.x.npc = "center",
+label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) 
+
+strata_provinces <- ggplot(alltaxaranges, aes(x = classification, y = nstations, group = classification)) + 
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.4, size = 0.5) +
+  geom_violin(alpha=0.3) +
+  stat_summary(fun = "mean",
+               geom = "point",
+               color = "black") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  ylab("Provinces (N)") + 
+  xlab(NULL) + 
+  # theme(text = element_text(size = 9),
+  #       plot.title = element_text(size = 10))   +
+  stat_compare_means(method = "kruskal.test", method.args= list(alternative = "two.sided"), 
+                     label.y = 3.4, 
+                     label.x.npc = "center",
+                     label = "p.signif",
+                     symnum.args = list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns"))) +
+  ylim(0.5,3.6)
+strata_provinces
+
+plots <- ggarrange(strata_samples, strata_provinces, nrow = 1, ncol = 2, align = "hv", labels = "auto")
+plots
+
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/stratum_num_observations.pdf", height =3, width = 6.5)
+plots
+dev.off()
+
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/stratum_num_samples.pdf", height =3, width = 3)
+strata_samples
+dev.off()
+
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/stratum_num_stations.pdf", height =3, width = 3)
+strata_provinces
+dev.off()
+
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/stratum_num_stations.jpeg", height =3, width = 3, unit = "in", quality = 100, res = 300)
+strata_provinces
+dev.off()
+
+
+```
+
+
+#What is the total environmental range within the epipelagic and mesopelagic? 
+- histograms of each variable
+
+```{r}
+epi <- subset_samples(COMBINED, stratum == "Epipelagic")
+meso <- subset_samples(COMBINED, stratum == "Mesopelagic")
+epi_meta <- data.frame(sample_data(epi))
+meso_meta <- data.frame(sample_data(meso))
+
+epi_ctd <- epi_meta %>% select(Net, Station, MeanTemp, MeanSal, MeanFluor, MeanOxy) %>% 
+  gather(key = "EnvVar", value = "Measurement", MeanTemp, MeanSal, MeanFluor, MeanOxy)
+meso_ctd <- meso_meta %>% select(Net, Station, MeanTemp, MeanSal, MeanFluor, MeanOxy) %>% 
+  gather(key = "EnvVar", value = "Measurement", MeanTemp, MeanSal, MeanFluor, MeanOxy)
+
+ggplot() + 
+  geom_histogram(data = epi_ctd, aes(x = Measurement), bins = 40, color = "blue") + 
+  geom_histogram(data = meso_ctd, aes(x = Measurement), bins = 40, color = "darkgreen") + 
+  facet_wrap(Station~EnvVar, scales = "free")
+
+
+ctd.dat <- read_excel("~/Documents/Chapter2/NH1208_CTDdata.xlsx")
+ctd.dat <- ctd.dat[ctd.dat$Station %in% c(7,15,34),]
+ctd.dat$Net <- NA
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 800 & ctd.dat$`Depth [salt water, m]` < 1001] <- "Net 1"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 600 & ctd.dat$`Depth [salt water, m]` < 801] <- "Net 2"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 400 & ctd.dat$`Depth [salt water, m]` < 601] <- "Net 3"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 200 & ctd.dat$`Depth [salt water, m]` < 401] <- "Net 4"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 100 & ctd.dat$`Depth [salt water, m]` < 201] <- "Net 5"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 50 & ctd.dat$`Depth [salt water, m]` < 101] <- "Net 6"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 25 & ctd.dat$`Depth [salt water, m]` < 51] <- "Net 7"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 0 & ctd.dat$`Depth [salt water, m]` < 26] <- "Net 8"
+ctd.dat.epi <- ctd.dat[ctd.dat$Net %in% c("Net 5", "Net 6", "Net 7", "Net 8"),]
+ctd.dat.meso <- ctd.dat[ctd.dat$Net %in% c("Net 1", "Net 2", "Net 3", "Net 4"),]
+
+epi_ctd <- ctd.dat.epi %>% select(Net, Station, `Temperature [ITS-90, deg C]`, `Salinity, Practical [PSU]`, `Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]`, `Oxygen, SBE 43 [umol/kg]`) %>% 
+  gather(key = "EnvVar", value = "Measurement", `Temperature [ITS-90, deg C]`, `Salinity, Practical [PSU]`, `Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]`, `Oxygen, SBE 43 [umol/kg]`)
+meso_ctd <- ctd.dat.meso %>% select(Net, Station, `Temperature [ITS-90, deg C]`, `Salinity, Practical [PSU]`, `Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]`, `Oxygen, SBE 43 [umol/kg]`) %>% 
+  gather(key = "EnvVar", value = "Measurement", `Temperature [ITS-90, deg C]`, `Salinity, Practical [PSU]`, `Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]`, `Oxygen, SBE 43 [umol/kg]`)
+
+Stationnames <- c(`7` = "Subarctic",
+                    `15` = "Transition",
+                    `34` = "Subtropical")
+
+
+Temperature <- ggplot() + 
+  geom_histogram(data = meso_ctd[meso_ctd$EnvVar == "Temperature [ITS-90, deg C]",], aes(x = Measurement, color = "Mesopelagic", fill = "Mesopelagic"), bins = 40, alpha = 0.6) + 
+  geom_histogram(data = epi_ctd[epi_ctd$EnvVar == "Temperature [ITS-90, deg C]",], aes(x = Measurement, color = "Epipelagic", fill = "Epipelagic"), bins = 40,  alpha = 0.6) + 
+  facet_wrap(.~Station, nrow = 3, labeller=as_labeller(Stationnames)) +
+  xlab("Temperature<br>(\u00B0C)") +
+  theme_bw()+
+    theme(axis.title.x = element_markdown())+ 
+  scale_colour_manual("Stratum", values = c("darkgreen", "blue"))+
+  scale_fill_manual("Stratum", values = c("darkgreen", "blue")) +
+  theme(axis.text.y = element_text(angle = 90, hjust = 0.5)) 
+
+  
+Salinity <- ggplot() + 
+  geom_histogram(data = meso_ctd[meso_ctd$EnvVar == "Salinity, Practical [PSU]",], aes(x = Measurement, color = "Mesopelagic", fill = "Mesopelagic"), bins = 40, alpha = 0.6) + 
+  geom_histogram(data = epi_ctd[epi_ctd$EnvVar == "Salinity, Practical [PSU]",], aes(x = Measurement, color = "Epipelagic", fill = "Epipelagic"), bins = 40,  alpha = 0.6) + 
+  facet_wrap(.~Station, nrow = 3, labeller=as_labeller(Stationnames)) +
+  xlab("Salinity")+
+      theme(axis.title.x = element_markdown())+ 
+theme_bw()+
+  scale_colour_manual("Stratum", values = c("darkgreen", "blue"))+
+  scale_fill_manual("Stratum", values = c("darkgreen", "blue")) +
+  theme(axis.text.y = element_text(angle = 90, hjust = 0.5)) 
+
+Fluorescence <- ggplot() + 
+  geom_histogram(data = meso_ctd[meso_ctd$EnvVar == "Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]",], aes(x = Measurement, color = "Mesopelagic", fill = "Mesopelagic"), bins = 40, alpha = 0.6) + 
+  geom_histogram(data = epi_ctd[epi_ctd$EnvVar == "Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]",], aes(x = Measurement, color = "Epipelagic", fill = "Epipelagic"), bins = 40,  alpha = 0.6) + 
+  facet_wrap(.~Station, nrow = 3, labeller=as_labeller(Stationnames)) +
+  xlab("Chlorophyll-a<br>(\U003BCg L<sup>-1</sup>)")+
+  theme_bw()+
+      theme(axis.title.x = element_markdown())+ 
+scale_colour_manual("Stratum", values = c("darkgreen", "blue"))+
+  scale_fill_manual("Stratum", values = c("darkgreen", "blue")) +
+  theme(axis.text.y = element_text(angle = 90, hjust = 0.5)) 
+
+Oxygen <- ggplot() + 
+  geom_histogram(data = meso_ctd[meso_ctd$EnvVar == "Oxygen, SBE 43 [umol/kg]",], aes(x = Measurement, color = "Mesopelagic", fill = "Mesopelagic"), bins = 40,  alpha = 0.6) + 
+  geom_histogram(data = epi_ctd[epi_ctd$EnvVar == "Oxygen, SBE 43 [umol/kg]",], aes(x = Measurement, color = "Epipelagic", fill = "Epipelagic"), bins = 40, alpha = 0.6) + 
+  facet_wrap(.~Station, nrow = 3, labeller=as_labeller(Stationnames)) +
+  xlab("Oxygen<br>(\U003BCmol kg<sup>1</sup>)")+
+  theme_bw()+
+      theme(axis.title.x = element_markdown())+ 
+scale_colour_manual("Stratum", values = c("darkgreen", "blue"))+
+  scale_fill_manual("Stratum", values = c("darkgreen", "blue")) +
+  theme(axis.text.y = element_text(angle = 90, hjust = 0.5)) 
+
+
+Stationandvariablenames <- c(`7` = "Subarctic",
+                    `15` = "Transition",
+                    `34` = "Subtropical",
+                    `Temperature [ITS-90, deg C]` = "Temperature<br>(\u00B0C)",
+                    `Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]` = "Chlorophyll-a<br>(\U003BCg L<sup>-1</sup>)",
+                    `Salinity, Practical [PSU]` = "Salinity<br>(PSU)",
+                    `Oxygen, SBE 43 [umol/kg]` = "Oxygen<br>(\U003BCmol kg<sup>1</sup>)")
+
+plot12 <- ggplot() + 
+  geom_histogram(data = meso_ctd, aes(x = Measurement, color = "Mesopelagic", fill = "Mesopelagic"), bins = 40,  alpha = 0.6) + 
+  geom_histogram(data = epi_ctd, aes(x = Measurement, color = "Epipelagic", fill = "Epipelagic"), bins = 40, alpha = 0.6) + 
+  facet_grid(Station~EnvVar, labeller=as_labeller(Stationandvariablenames), scales = "free", switch = "x") +
+  xlab(NULL)+
+  theme_bw()+
+  theme(axis.title.x = element_markdown())+ 
+  scale_colour_manual("Stratum", values = c("darkgreen", "blue"))+
+  scale_fill_manual("Stratum", values = c("darkgreen", "blue")) +
+  theme(axis.text.y = element_text(angle = 90, hjust = 0.5),
+        #axis.text.x = element_text(angle = 90, vjust = 0.5),
+     strip.text = element_markdown(),
+    strip.text.x = element_markdown(),
+    strip.text.y = element_markdown(),
+    strip.background.x = element_blank(),
+    strip.placement = "outside"
+  )
+#ggh4x::facet_grid2(Station~EnvVar, labeller=as_labeller(Stationandvariablenames), scales = "free", ncol = 4)
+plot12
+
+
+
+Temperatureall <- ggplot() + 
+  geom_histogram(data = meso_ctd[meso_ctd$EnvVar == "Temperature [ITS-90, deg C]",], aes(x = Measurement, color = "Mesopelagic", fill = "Mesopelagic"), bins = 40, alpha = 0.6) + 
+  geom_histogram(data = epi_ctd[epi_ctd$EnvVar == "Temperature [ITS-90, deg C]",], aes(x = Measurement, color = "Epipelagic", fill = "Epipelagic"), bins = 40,  alpha = 0.6) + 
+  xlab("Temperature<br>(\u00B0C)") + 
+  theme(axis.title.x = element_markdown())+ 
+  theme_bw()+
+  scale_colour_manual("Stratum", values = c("darkgreen", "blue"))+
+  scale_fill_manual("Stratum", values = c("darkgreen", "blue")) +
+  theme(axis.text.y = element_text(angle = 90, hjust = 0.5)) 
+
+
+  
+Salinityall <- ggplot() + 
+  geom_histogram(data = meso_ctd[meso_ctd$EnvVar == "Salinity, Practical [PSU]",], aes(x = Measurement, color = "Mesopelagic", fill = "Mesopelagic"), bins = 40, alpha = 0.6) + 
+  geom_histogram(data = epi_ctd[epi_ctd$EnvVar == "Salinity, Practical [PSU]",], aes(x = Measurement, color = "Epipelagic", fill = "Epipelagic"), bins = 40,  alpha = 0.6) + 
+  xlab("Salinity, [PSU]")+
+  theme_bw()+
+  scale_colour_manual("Stratum", values = c("darkgreen", "blue"))+
+  scale_fill_manual("Stratum", values = c("darkgreen", "blue")) +
+  theme(axis.text.y = element_text(angle = 90, hjust = 0.5)) 
+
+Fluorescenceall <- ggplot() + 
+  geom_histogram(data = meso_ctd[meso_ctd$EnvVar == "Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]",], aes(x = Measurement, color = "Mesopelagic", fill = "Mesopelagic"), bins = 40, alpha = 0.6) + 
+  geom_histogram(data = epi_ctd[epi_ctd$EnvVar == "Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]",], aes(x = Measurement, color = "Epipelagic", fill = "Epipelagic"), bins = 40,  alpha = 0.6) + 
+  xlab("Chlorophyll-a<br>(\U003BCg L<sup>-1</sup>)")+
+  theme(axis.title.x = element_markdown())+ 
+  theme_bw()+
+  scale_colour_manual("Stratum", values = c("darkgreen", "blue"))+
+  scale_fill_manual("Stratum", values = c("darkgreen", "blue")) +
+  theme(axis.text.y = element_text(angle = 90, hjust = 0.5)) 
+
+Oxygenall <- ggplot() + 
+  geom_histogram(data = meso_ctd[meso_ctd$EnvVar == "Oxygen, SBE 43 [umol/kg]",], aes(x = Measurement, color = "Mesopelagic", fill = "Mesopelagic"), bins = 40,  alpha = 0.6) + 
+  geom_histogram(data = epi_ctd[epi_ctd$EnvVar == "Oxygen, SBE 43 [umol/kg]",], aes(x = Measurement, color = "Epipelagic", fill = "Epipelagic"), bins = 40, alpha = 0.6) + 
+  xlab("Oxygen, [umol/kg]")+
+  theme_bw()+
+  scale_colour_manual("Stratum", values = c("darkgreen", "blue"))+
+  scale_fill_manual("Stratum", values = c("darkgreen", "blue")) +
+  theme(axis.text.y = element_text(angle = 90, hjust = 0.5)) 
+
+
+
+histos4 <- ggarrange(Temperature, Salinity, Fluorescence, Oxygen, nrow = 1, ncol = 4, align = "hv", common.legend = T, legend = "bottom")
+
+histosall <- ggarrange(Temperatureall, Salinityall, Fluorescenceall, Oxygenall, nrow = 4, ncol = 1, align = "hv", common.legend = T, legend = "bottom")
+
+histos5 <- ggarrange(histos4, histosall, ncol = 2, nrow = 1, align = "hv", common.legend = T, legend = "bottom", widths = c(3,1))
+histos5
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/EnviroHistograms.pdf", height =5, width = 6.5)
+histos4
+dev.off()
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/EnviroHistograms.jpeg", height =5, width = 6.5, unit = "in", quality = 100, res = 300)
+histos4
+dev.off()
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/EnviroHistograms_cleaner.pdf", height =5, width = 6.5)
+plot12
+dev.off()
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/EnviroHistograms_cleaner.jpeg", height =5, width = 6.5, unit = "in", quality = 100, res = 300)
+plot12
+dev.off()
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/EnviroHistograms_withoverall.pdf", height =4, width = 6.5)
+histos5
+dev.off()
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/EnviroHistograms_withoverall.jpeg", height =5.5, width = 8, unit = "in", quality = 100, res = 300)
+histos5
+dev.off()
+
+```
+
+
+
+#cluster samples based on environment
+```{r}
+sampleenvirodata <- data.frame(sample_data(normalized_combined_rarefied))
+sampleenvirodata_forcluster <- sampleenvirodata[,c("MeanTemp", "MeanSal", "MeanFluor", "MeanOxy", "MaxTemp", "MaxSal", "MaxFluor", "MaxOxy", "MinTemp", "MinSal", "MinFluor", "MinOxy", "OnePercLightDepth")]
+scaled_forcluster <- data.frame(scale(sampleenvirodata_forcluster))
+H_metals.sim <- dist(scaled_forcluster, method = "euclidean")
+wineK3 <- kmeans(x=scaled_forcluster, centers=3)
+library(useful)
+scaled_forcluster$Net <- sampleenvirodata$Net
+scaled_forcluster$Province <- sampleenvirodata$Station.fac
+scaled_forcluster$Depth <- sampleenvirodata$stratum
+plot(wineK3, data=scaled_forcluster, class = "Province")
+plot(wineK3, data=scaled_forcluster, class = "Depth")
+
+
+sampleenvirodata_forcluster <- sampleenvirodata[,c("MeanTemp", "MeanSal", "MeanFluor", "MeanOxy", "OnePercLightDepth")]
+scaled_forcluster <- data.frame(scale(sampleenvirodata_forcluster))
+
+#both_complete <- hclust(dist(scaled_forcluster), method = 'complete')
+#both_single <- hclust(dist(scaled_forcluster), method = 'single')
+both_average <- hclust(dist(scaled_forcluster), method = 'average')
+
+
+distenviro <- dist(scaled_forcluster)
+
+library(plotly)
+library(ggfortify)
+
+df <- sampleenvirodata[,c("MeanTemp", "MeanSal", "MeanFluor", "MeanOxy")]
+pca_res <- prcomp(df, scale. = TRUE, center = TRUE)
+
+p <- autoplot(pca_res, colour = 'MeanTemp', shape = "Province")
+p <- autoplot(pca_res,
+                          data = sampleenvirodata,
+                          colour = 'stratum', shape = 'Station.char.fac')
+
+(p <- p + 
+  ggtitle("Environmental distance")+ labs(color = "Depth", shape = "Province") )
+
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/PCA_envirovariables.pdf", height =3.8, width = 6.5)
+p
+dev.off()
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/PCA_envirovariables.jpeg", height = 3.8, width = 6.5, unit = "in", quality = 100, res = 300)
+p
+dev.off()
+
+
+
+```
+
+
+#plot depth of richness maximum with latitude 
+```{r}
+richnessmaximumdepths <- data.frame(
+  location = c("Tropical Pacific", "Tropical Pacific", "Subtropical Gyre, Central", "Subtropical Gyre, Central", "Subtropical Gyre, North","Subtropical Gyre, North","Subtropical Gyre, North","Subtropical Gyre, North", "Transition Province","Transition Province", "Transition Province","Transition Province", "Subarctic Gyre","Subarctic Gyre", "Subarctic Gyre","Subarctic Gyre", "Arctic Basin"),
+  LatitudeN = c(9.75,            9.75,           22.75,              22.75,              33.55,     33.55, 33.55,     33.55,       43.05,      43.05,      43.05,      43.05,      47.0,      47.0,      47.0,      47.0,           80), 
+  LongitudeW = c(93.75,          93.75,          158,                15,               134.999702,  134.999702,   134.999702,  134.999702, 138.133652, 138.133652, 138.133652, 138.133652, 144.736543,144.736543,  144.736543,144.736543,       240), 
+  Source = c("Longhurst, 1985", "Longhurst, 1985", "Sommer et al., 2017","Sommer et al., 2017", "This study", "This study", "This study", "This study", "This study", "This study","This study", "This study", "This study", "This study", "This study", "This study", "Kosobokova et al., 2011"),
+  Depthrange = c("30-35",                "40-45",            "200-300",            "100-150",      "50-100",       "50-100", "50-100", "100-200",  "600-800",  "200-400",   "200-400", "200-400",    "600-800",   "600-800", "800-1000", "600-800",   "500-1000"), 
+  Diel =       c("Day",                 "Night",             "Day",               "Night",         "Day",       "Night",        "Day",      "Night",       "Day",       "Night",   "Day",       "Night",        "Day",      "Night",       "Day",       "Night",      "Not reported"),
+  Method = c("Morphology",        "Morphology",        "18S V1-V2",        "18S V1-V2",        "COI",        "COI",        "18S V4",        "18S V4",          "COI",        "COI",    "18S V4",        "18S V4",        "COI",        "COI",          "18S V4",        "18S V4",         "Morphology"),
+  Depth = c(32.5, 42.5, 250, 125, 75, 75, 75, 150, 700, 300, 300, 300, 700, 700, 900, 700, 750))
+
+depthofrichnessmax <- ggplot(richnessmaximumdepths, aes(x = LatitudeN, y = Depth)) + 
+  geom_jitter(aes(shape = Method, color = Diel, fill = Diel, size = Method)) + 
+  scale_y_reverse() + 
+  ylab("Depth of richness maximum (m)") + 
+  xlab("Latitude (N)") + 
+  scale_color_manual("Time of day", values = c(c("#9A32CD", "#458B00", "#EEAD0E"))) + 
+  scale_fill_manual("Time of day", values = c(c("#9A32CD", "#458B00", "#EEAD0E"))) +
+  scale_shape_manual(values = c(15, 18, 17, 16)) + 
+  scale_size_manual(values = c(2, 2.5, 2, 2))
+depthofrichnessmax
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/DepthOfRichnessMax.pdf", height =3, width =4.4)
+depthofrichnessmax
+dev.off()
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/DepthOfRichnessMax.jpeg", height = 3, width = 4.4, unit = "in", quality = 100, res = 300)
+depthofrichnessmax
+dev.off()
+
+
+```
+
+
+
+
+

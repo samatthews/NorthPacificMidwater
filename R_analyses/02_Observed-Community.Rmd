@@ -1,0 +1,1115 @@
+---
+title: "02_Observed-Community"
+output: html_document
+date: "2023-02-16"
+---
+
+```{r}
+load("~/Documents/Chapter2/manuscript_analysis/R/workflow_for_github/COI&ZHAN_formanuscript.rdat")
+#tax_table(COI)$Class[tax_table(COI)[,c("Class")] == "Hexanauplia"] <- "Copepoda"
+#tax_table(ZHAN)$Class[tax_table(ZHAN)$Class == "Hexanauplia"] <- "Copepoda"
+```
+
+### figure 1
+
+
+```{r plot ctd data}
+ctd.dat <- read_excel("~/Documents/Chapter2/NH1208_CTDdata.xlsx")
+ctd.dat$Net <- NA
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 800 & ctd.dat$`Depth [salt water, m]` < 1001] <- "Net 1"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 600 & ctd.dat$`Depth [salt water, m]` < 801] <- "Net 2"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 400 & ctd.dat$`Depth [salt water, m]` < 601] <- "Net 3"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 200 & ctd.dat$`Depth [salt water, m]` < 401] <- "Net 4"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 100 & ctd.dat$`Depth [salt water, m]` < 201] <- "Net 5"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 50 & ctd.dat$`Depth [salt water, m]` < 101] <- "Net 6"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 25 & ctd.dat$`Depth [salt water, m]` < 51] <- "Net 7"
+ctd.dat$Net[ctd.dat$`Depth [salt water, m]` > 0 & ctd.dat$`Depth [salt water, m]` < 26] <- "Net 8"
+
+
+ctd.dat <- ctd.dat[!is.na(ctd.dat$Net),]
+ctd.dat <- ctd.dat[ctd.dat$Station %in% c(7,15,34),]
+ctd.dat$Station_fact <- as.factor(ctd.dat$Station)
+ctd.dat$Province <- NA
+ctd.dat$Province[ctd.dat$Station_fact == 7] <- "Subarctic"
+ctd.dat$Province[ctd.dat$Station_fact == 15] <- "Transition"
+ctd.dat$Province[ctd.dat$Station_fact == 34] <- "Subtropical"
+
+fluorplot <- ggplot(ctd.dat[ctd.dat$Cast != 13,]) + 
+  #geom_point(aes(y = `Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]`, x = `Depth [salt water, m]`, color = Station_fact, group = Cast)) + 
+  geom_line(aes(y = `Fluorescence, WET Labs ECO-AFL/FL [mg/m^3]`, x = `Depth [salt water, m]`, color = Province, group = Cast)) + 
+  scale_x_reverse() + 
+  xlim(150,0) + 
+  coord_flip() + 
+  ylab("Chlorophyll-a<br> (\U003BCg L<sup>-1</sup>)")+
+  theme(axis.title.x = element_markdown(),
+        axis.title.y = element_markdown())+ #"Chlorophyll \n[mg/m^3]") + # expression('Chl-' * italic('a'))) + 
+  xlab("Depth (m)")+ 
+  theme(axis.text.y = element_text(angle = 90, hjust = 0.5)) + 
+  scale_color_manual(values = c("#436EEE", "#EE3B3B","#458B00"), name = "Province") 
+
+
+oxyplot <- ggplot(ctd.dat[ctd.dat$`Depth [salt water, m]` > 50,]) + 
+ # geom_point(aes(y = `Oxygen, SBE 43 [umol/kg]`, x = `Depth [salt water, m]`, color = Station_fact, group = Cast)) + 
+  geom_line(aes(y = `Oxygen, SBE 43 [umol/kg]`, x = `Depth [salt water, m]`, color = Province, group = Cast)) + 
+  scale_x_reverse() + 
+  xlim(1000,0) + 
+  coord_flip() + 
+  ylab("Oxygen<br> (\U003BCmol kg<sup>-1</sup>)")+
+  theme(axis.title.x = element_markdown())+ 
+  xlab("Depth (m)")+ 
+  theme(axis.text.y = element_text(angle = 90, hjust = 0.5)) + 
+  scale_color_manual(values = c("#436EEE", "#EE3B3B","#458B00"), name = "Province") 
+
+
+tempplot <- ggplot(ctd.dat) + 
+ # geom_point(aes(y = `Temperature [ITS-90, deg C]`, x = `Depth [salt water, m]`, color = Station_fact, group = Cast)) + 
+  geom_line(aes(y = `Temperature [ITS-90, deg C]`, x = `Depth [salt water, m]`, color = Province, group = Cast)) + 
+  scale_x_reverse() + 
+  xlim(1000,0) + 
+  coord_flip() +
+  ylab("Temperature<br>(\u00B0C)") + 
+  xlab("Depth (m)") + 
+  theme(axis.text.y = element_text(angle = 90, hjust = 0.5)) + 
+    theme(axis.title.x = element_markdown())+ 
+  scale_color_manual(values = c("#436EEE", "#EE3B3B","#458B00"), name = "Province") 
+
+
+envplots <- ggarrange(fluorplot + xlab(NULL), oxyplot + xlab(NULL), tempplot + xlab(NULL), ncol = 3, nrow = 1, align = "hv", common.legend = TRUE, legend = "none")
+envplots <- annotate_figure(envplots, left = text_grob("Depth (m)", rot = 90))
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/workflow_for_github/plots/environ_CTDtraces.jpeg", height =5.5, width = 4, unit = "in", quality = 100, res = 300)
+envplots
+dev.off()
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/workflow_for_github/plots/environ_CTDtraces.pdf", height =5.5, width = 4)
+envplots
+dev.off()
+```
+
+
+```{r plot map}
+province_points <- read.csv("~/Documents/Chapter3/sample_selection/longhurst_provinces_samples_v5.csv")
+#province_points <- province_points[province_points$source != "",]
+#setwd("~/")
+mp1 <- fortify(map(fill=TRUE, plot=FALSE))
+mp2 <- mp1
+mp2$long <- mp2$long + 360
+mp2$group <- mp2$group + max(mp2$group) + 1
+mp <- rbind(mp1, mp2)
+
+load("~/Documents/Chapter3/sample_selection/outlinemaps.Rdat")
+
+
+bbpoints <- data.frame(Latitude = c(46.99891, 43.003288, 33.505167),
+                       Longitude = c(-144.736543, -138.133652, -134.999702),
+                       Names = c("Subarctic", "Transition", "Subtropical"),
+                       Stations = c(7, 15, 34))
+bbpoints$LongitudeE <- bbpoints$Longitude + 360
+  
+
+
+p <- ggplot(aes(x = long, y = lat, group = group), data = mp) + 
+  geom_path(size = 0.15)  + 
+  scale_x_continuous(limits = c(210, 245)) + 
+  scale_y_continuous(limits = c(28, 62)) +
+  geom_point(data = bbpoints, aes(x=LongitudeE, y=Latitude, group = Names, color = Names), size = 2, inherit.aes = F)  + 
+  geom_text(data = bbpoints, aes(x=LongitudeE, y=Latitude, label = Names, group = Names, color = Names), vjust = 0, nudge_y = 0.9) +
+  theme(legend.position ="none") +
+        #theme(legend.title = element_text(size = 9), 
+        #      legend.text  = element_text(size = 8),
+        #      legend.key.size = unit(0.01, "lines"), 
+        #legend.box.background = element_rect(color="white")) +
+  xlab('Longitude (E)') + 
+  ylab('Latitude (N)')  +
+  scale_color_manual(values = c("#436EEE",  "#EE3B3B", "#458B00"), name = "Province") 
+p
+
+envplots
+
+locations <- ggarrange(p, envplots)
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/SamplingLocations.pdf", height =4, width = 8)
+locations
+dev.off()
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/SamplingLocations.jpeg", height =4, width = 8, unit = "in", quality = 100, res = 300)
+locations
+dev.off()
+
+```
+
+
+
+### figure 2
+```{r how does richness vary between stations?}
+sample_data(COI)$richness <- estimate_richness(COI, split = TRUE, measures = "Observed")$Observed
+sample_data(ZHAN)$richness <- estimate_richness(ZHAN, split = TRUE, measures = "Observed")$Observed
+
+
+
+plot_richness_steph <- function (physeq, x = "Sample", y = "richness", 
+                                 title = NULL, facet_grid = NULL, w = "binwidth") {
+  mdf = psmelt(physeq)
+  disp1 <- max(mdf$richness)*1.05
+  mdf$richness[mdf$Diel == "Night"] <- mdf$richness[mdf$Diel == "Night"]*-1
+  mdf$groupings <- paste(mdf$Diel, mdf$Station.char.fac)
+  p <- ggplot(mdf) + 
+    annotate("rect", xmin = -Inf,
+             xmax = Inf,
+             ymin =  -Inf,
+             ymax = 0, fill = "grey60", alpha = 0.5) + 
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 4), limits = c(-disp1, disp1), labels=abs) +
+    geom_point(aes(x = target.mean, y = richness, group = groupings, color = Station.char.fac)) + 
+    geom_line(aes(x = target.mean, y = richness, group = groupings, color = Station.char.fac)) + 
+    theme_bw() + 
+    coord_flip() + 
+    scale_x_reverse() +
+    labs(x = "Depth (m)", y = "OTU Richness", color = "Province") +
+    geom_hline(yintercept = 0, size = 0.2) 
+  if (!is.null(facet_grid)) {
+    p <- p + facet_grid(facet_grid)
+  }
+  if (!is.null(title)) {
+    p <- p + ggtitle(title)
+  }
+  return(p)
+}
+
+plot_richness_stephCOI <- function (physeq, x = "Sample", y = "richness", 
+                                 title = NULL, facet_grid = NULL, w = "binwidth") {
+  mdf = psmelt(physeq)
+  disp1 <- max(mdf$richness)*1.05
+  mdf$richness[mdf$Diel == "Night"] <- mdf$richness[mdf$Diel == "Night"]*-1
+  mdf$groupings <- paste(mdf$Diel, mdf$Station.char.fac)
+  p <- ggplot(mdf) + 
+    annotate("rect", xmin = -Inf,
+             xmax = Inf,
+             ymin =  -Inf,
+             ymax = 0, fill = "grey60", alpha = 0.5) + 
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 4), limits = c(-disp1, disp1), labels=abs) +
+    geom_point(aes(x = target.mean, y = richness, group = groupings, color = Station.char.fac), shape = 17) + 
+    geom_line(aes(x = target.mean, y = richness, group = groupings, color = Station.char.fac)) + 
+    theme_bw() + 
+    coord_flip() + 
+    scale_x_reverse() +
+    labs(x = "Depth (m)", y = "OTU Richness", color = "Province") +
+    geom_hline(yintercept = 0, size = 0.2) 
+  if (!is.null(facet_grid)) {
+    p <- p + facet_grid(facet_grid)
+  }
+  if (!is.null(title)) {
+    p <- p + ggtitle(title)
+  }
+  return(p)
+}
+
+
+prichnesscoi <- plot_richness_stephCOI(COI, x = "target.mean") + 
+  scale_color_manual(values = c( "#436EEE","#458B00", "#EE3B3B"), name = "Province")  + 
+  scale_shape_manual(values = c(2)) +
+  theme(#axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+    #axis.text.y = element_text(angle = 90, vjust = 0.5, hjust=1)
+  )  + 
+  ggtitle("Richness (COI)") + 
+  ylab("OTUs (#)") 
+
+
+prichnesszhan <- plot_richness_steph(ZHAN, x = "target.mean") + 
+  scale_color_manual(values = c( "#436EEE","#458B00", "#EE3B3B"), name = "Province") +
+  theme(#axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+    #axis.text.y = element_text(angle = 90, vjust = 0.5, hjust=1)
+  ) + 
+  ggtitle("Richness (18S)") + 
+  ylab("ASVs (#)")
+
+
+richnessplots <- ggarrange(prichnesscoi, prichnesszhan, nrow = 1, ncol = 2, align = "hv", common.legend = T, legend = "bottom", labels = "auto")
+
+
+
+```
+
+```{r by marker richness}
+zhan_epi <- subset_samples(ZHAN, stratum == "Epipelagic")
+zhan_meso <- subset_samples(ZHAN, stratum == "Mesopelagic")
+
+zhan_epi_merged <- merge_samples(zhan_epi, group = "Station.char.fac")
+sample_data(zhan_epi_merged)$totalrichness <- estimate_richness(zhan_epi_merged, split = TRUE, measures = "Observed")$Observed
+zhan_meso_merged <- merge_samples(zhan_meso, group = "Station.char.fac")
+sample_data(zhan_meso_merged)$totalrichness <- estimate_richness(zhan_meso_merged, split = TRUE, measures = "Observed")$Observed
+zhan_merged <- merge_samples(ZHAN, group = "Station.char.fac")
+sample_data(zhan_merged)$totalrichness <- estimate_richness(zhan_merged, split = TRUE, measures = "Observed")$Observed
+
+
+observednumbers_18S <- data.frame(estimate_richness(zhan_epi_merged, split = TRUE, measures = "Observed")$Observed,
+                                  estimate_richness(zhan_meso_merged, split = TRUE, measures = "Observed")$Observed, 
+                                  estimate_richness(zhan_merged, split = TRUE, measures = "Observed")$Observed, 
+                                  sample_names(zhan_epi_merged), 
+                                  sample_names(zhan_meso_merged), 
+                                  sample_names(zhan_merged),
+                                  rep("Epipelagic", n = 3), 
+                                  rep("Mesopelagic", n = 3), 
+                                  rep("Total", n = 3),
+                                  rep("18S", n = 3))
+colnames(observednumbers_18S) <- c("EpiObserved", "MesoObserved", "TotalObserved", "Epinames", "Mesonames", "Totalnames", "Epipelagic", "Mesopelagic", "Total", "Marker")
+
+p_zhan <- ggplot(observednumbers_18S) + 
+  geom_point(aes(x = Epinames, y = EpiObserved, group = Epipelagic, color = Epipelagic)) + 
+  geom_line(aes(x = Epinames, y = EpiObserved, group = Epipelagic, color = Epipelagic)) + 
+  geom_point(aes(x = Mesonames, y = MesoObserved, group = Mesopelagic, color = Mesopelagic)) + 
+  geom_line(aes(x = Mesonames, y = MesoObserved, group = Mesopelagic, color = Mesopelagic)) + 
+  scale_x_discrete(limits = c("Subtropical", "Transition", "Subarctic")) +
+  theme_bw() + 
+  labs(y = "Observed ASVs (#)", x = "Province", color = "Depth")+
+  scale_color_manual("Depth", values = c("blue", "red"))  + 
+  ggtitle("18S Richness")
+
+
+coi_epi <- subset_samples(COI, stratum == "Epipelagic")
+coi_meso <- subset_samples(COI, stratum == "Mesopelagic")
+coi_epi_merged <- merge_samples(coi_epi, group = "Station.char.fac")
+sample_data(coi_epi_merged)$totalrichness <- estimate_richness(coi_epi_merged, split = TRUE, measures = "Observed")$Observed
+coi_meso_merged <- merge_samples(coi_meso, group = "Station.char.fac")
+sample_data(coi_meso_merged)$totalrichness <- estimate_richness(coi_meso_merged, split = TRUE, measures = "Observed")$Observed
+coi_merged <- merge_samples(COI, group = "Station.char.fac")
+sample_data(coi_merged)$totalrichness <- estimate_richness(coi_merged, split = TRUE, measures = "Observed")$Observed
+
+
+observednumbers_coi <- data.frame(estimate_richness(coi_epi_merged, split = TRUE, measures = "Observed")$Observed,
+                                  estimate_richness(coi_meso_merged, split = TRUE, measures = "Observed")$Observed, 
+                                  estimate_richness(coi_merged, split = TRUE, measures = "Observed")$Observed,
+                                  sample_names(coi_epi_merged), 
+                                  sample_names(coi_meso_merged), 
+                                  sample_names(coi_merged), 
+                                  rep("Epipelagic", n = 3), 
+                                  rep("Mesopelagic", n = 3), 
+                                  rep("Total", n = 3),
+                                  rep("COI", n = 3))
+colnames(observednumbers_coi) <- c("EpiObserved", "MesoObserved", "TotalObserved", "Epinames", "Mesonames", "Totalnames", "Epipelagic", "Mesopelagic", "Total", "Marker")
+
+p_coi <- ggplot(observednumbers_coi) + 
+  geom_point(aes(x = Epinames, y = EpiObserved, group = Epipelagic, color = Epipelagic)) + 
+  geom_line(aes(x = Epinames, y = EpiObserved, group = Epipelagic, color = Epipelagic)) + 
+  geom_point(aes(x = Mesonames, y = MesoObserved, group = Mesopelagic, color = Mesopelagic)) + 
+  geom_line(aes(x = Mesonames, y = MesoObserved, group = Mesopelagic, color = Mesopelagic)) + 
+  scale_x_discrete(limits = c("Subtropical", "Transition", "Subarctic")) +
+  theme_bw() + 
+  labs(y = "Observed OTUs (#)", x = "Province", color = "Depth")+
+  scale_color_manual("Depth", values = c("blue", "red"))  + 
+  ggtitle("COI Richness")
+richnessplots <- ggarrange(p_zhan, p_coi, align = "hv", labels = "auto", common.legend = TRUE, legend = "right", ncol = 2, nrow = 1)
+
+
+```
+
+```{r markers together richness}
+p_both <- ggplot(observednumbers_coi) + 
+  geom_point(aes(x = Epinames, y = EpiObserved, group = Epipelagic, color = Epipelagic, shape = Marker)) + 
+  geom_line(aes(x = Epinames, y = EpiObserved, group = Epipelagic, color = Epipelagic, linetype = Marker)) + 
+  geom_point(aes(x = Mesonames, y = MesoObserved, group = Mesopelagic, color = Mesopelagic, shape = Marker)) + 
+  geom_line(aes(x = Mesonames, y = MesoObserved, group = Mesopelagic, color = Mesopelagic, linetype = Marker)) + 
+  geom_point(aes(x = Totalnames, y = TotalObserved, group = Total, color = Total, shape = Marker)) + 
+  geom_line(aes(x = Totalnames, y = TotalObserved, group = Total, color = Total, linetype = Marker)) + 
+  
+  geom_point(data = observednumbers_18S, aes(x = Epinames, y = EpiObserved, group = Epipelagic, color = Epipelagic, shape = Marker)) + 
+  geom_line(data = observednumbers_18S, aes(x = Epinames, y = EpiObserved, group = Epipelagic, color = Epipelagic, linetype = Marker)) + 
+  geom_point(data = observednumbers_18S, aes(x = Mesonames, y = MesoObserved, group = Mesopelagic, color = Mesopelagic, shape = Marker)) + 
+  geom_line(data = observednumbers_18S, aes(x = Mesonames, y = MesoObserved, group = Mesopelagic, color = Mesopelagic, linetype = Marker)) + 
+  geom_point(data = observednumbers_18S, aes(x = Totalnames, y = TotalObserved, group = Total, color = Total, shape = Marker)) + 
+  geom_line(data = observednumbers_18S, aes(x = Totalnames, y = TotalObserved, group = Total, color = Total, linetype = Marker)) + 
+  
+  scale_x_discrete(limits = c("Subtropical", "Transition", "Subarctic")) +
+  theme_bw() + 
+  labs(y = "Richness", x = "Province", color = "Depth", shape = "Marker", linetype = "Marker") + 
+  scale_colour_manual(values = c("#9370DB", "#8B4C39", "#030303")) +
+     guides(color = guide_legend(override.aes = list(shape = c(NA, NA, NA), size = c(4) ) ) ) #linetype = guide_legend(override.aes = list(size = 2))
+p_both
+```
+
+```{r richness by depth and overall three panels}
+p_both_vert <- p_both + 
+  theme(legend.position="bottom", legend.box = "horizontal", legend.direction = "vertical", legend.title = element_text(size=11), legend.text = element_text(size=8)) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ylim(0,550) + ggtitle("Total Richness") 
+p_both_vert
+
+richnessplots <- ggarrange(prichnesscoi, prichnesszhan, nrow = 1, ncol = 2, align = "hv", common.legend = T, legend = "bottom", labels = "auto")
+richnessplots <- ggarrange(richnessplots, p_both_vert, nrow = 1, ncol = 2, widths = c(2,1.3), labels = c("", "c"))
+
+richnessplots
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/Richness_Depth_Provinces.pdf", height =4, width = 6.5)
+richnessplots
+dev.off()
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/Richness_Depth_Provinces.jpeg", height =4, width = 6.5, unit = "in", quality = 100, res = 300)
+richnessplots
+dev.off()
+
+
+```
+
+
+
+
+
+##epi and meso taxonomy  
+What is the taxonomic composition of epi and meso communities? 
+
+```{r}
+
+sample_data(COMBINED)$formerging <- paste(sample_data(COMBINED)$stratum, sample_data(COMBINED)$Station.char.fac)
+mergedCOMBINED <- merge_samples(COMBINED, group = "formerging") 
+mergedCOMBINED <- transform_sample_counts(mergedCOMBINED, function(x) x / sum(x))
+sample_data(mergedCOMBINED)$Station.char.fac <- as.character(strsplit(sample_names(mergedCOMBINED), " ", ) %>% sapply("[[", 2))
+sample_data(mergedCOMBINED)$stratum <- as.character(strsplit(sample_names(mergedCOMBINED), " ", ) %>% sapply("[[", 1))
+
+
+mergedCOMBINED_glom <- mergedCOMBINED
+tax_table(mergedCOMBINED_glom) <- tax_table(mergedCOMBINED_glom)[,c("Class", "Order", "Family")]
+tax_table(mergedCOMBINED_glom)[,c("Class")][tax_table(mergedCOMBINED_glom)[,c("Class")] == ""] <- "Unknown"
+tax_table(mergedCOMBINED_glom)[,c("Class")][tax_table(mergedCOMBINED_glom)[,c("Class")] == "Class"] <- "Unknown"
+mergedCOMBINED_glomphylum <- tax_glom(mergedCOMBINED_glom, taxrank = "Class")
+taxa_names(mergedCOMBINED_glomphylum) <- tax_table(mergedCOMBINED_glomphylum)[,1]
+taxa_names(mergedCOMBINED_glomphylum)[taxa_names(mergedCOMBINED_glomphylum) == "Hexanauplia"] <- "Copepoda"
+#mycolorsnewall <- c("#0000FF", "#CD3333", "#006400", "#B23AEE", "#FFD700", "#EE1289", "#FF7F24", "#104E8B", "#FF82AB", "#EE9A49", "#FFF68F", "#B4EEB4", "#BFEFFF", "#6CA6CD", "#EEAEEE", "#836FFF", "#8B1A1A", "#8B5A00", "#000080", "#551A8B", "#CCCCCC")
+mycolorsnewall <- c("#0000FF", "#EE2C2C", "#006400", "#9A32CD", "#FFC125", "#EE1289", "#FF7F00", "#104E8B", "#EE6AA7", "#CD950C", "#FFEC8B", "#BCEE68", "#CAE1FF", "#8DB6CD", "#EEAEEE", "#9F79EE", "#8B0000", "#CD6600", "#000080", "#8B4789", "#C7C7C7", "#36648B", "#FFEFD5", "#00CD00")[1:ntaxa(mergedCOMBINED_glomphylum)]
+names(mycolorsnewall) <- unique(names(sort(taxa_sums(mergedCOMBINED_glomphylum), decreasing = TRUE)))
+names(mycolorsnewall)[names(mycolorsnewall) == "Hexanauplia"] <- "Copepoda"
+
+pa <- plot_bar(mergedCOMBINED_glomphylum, x = "Station.char.fac", fill = "OTU", facet_grid = "stratum")+geom_bar(stat="identity")+
+  theme(axis.text.y = element_text(angle = 90, hjust = 0.5)) + scale_x_discrete(limits = c("Subtropical", "Transition", "Subarctic")) +
+  theme_bw() + 
+  xlab(NULL) + 
+  ggtitle("All Taxa") + 
+  guides(fill=guide_legend(ncol=1))+
+  scale_fill_manual(values = mycolorsnewall, name = "Group", breaks = names(mycolorsnewall)[order(names(mycolorsnewall))])+ 
+  theme(text = element_text(size = 9),
+        plot.title = element_text(size = 10),
+        legend.key.size = unit(0.3, 'cm'),
+        axis.text.x = element_text(angle = 45, hjust=1))     
+pa
+
+mergedCOMBINED_glom <- mergedCOMBINED
+mergedCOMBINED_glom <- subset_taxa(mergedCOMBINED_glom, Class == "Hexanauplia")
+tax_table(mergedCOMBINED_glom) <- tax_table(mergedCOMBINED_glom)[,c("Family", "Phylum")]
+tax_table(mergedCOMBINED_glom)[,c("Family")][tax_table(mergedCOMBINED_glom)[,c("Family")] == ""] <- "Unknown"
+tax_table(mergedCOMBINED_glom)[,c("Family")][tax_table(mergedCOMBINED_glom)[,c("Family")] == "Family"] <- "Unknown"
+mergedCOMBINED_glomfamily <- tax_glom(mergedCOMBINED_glom, taxrank = "Family")
+taxa_names(mergedCOMBINED_glomfamily) <- tax_table(mergedCOMBINED_glomfamily)[,1]
+#taxa_names(mergedCOMBINED_glomfamily)[taxa_names(mergedCOMBINED_glomfamily) == "Cyclopoida incertae sedis"] <- "Unknown"
+#mycolorsnewall <- c("#0000FF", "#CD3333", "#006400", "#B23AEE", "#FFD700", "#EE1289", "#FF7F24", "#104E8B", "#FF82AB", "#EE9A49", "#FFF68F", "#B4EEB4", "#BFEFFF", "#6CA6CD", "#EEAEEE", "#836FFF", "#8B1A1A", "#8B5A00", "#000080", "#551A8B", "#CCCCCC")
+mycolorsnewall <- c("#0000FF", "#CD3333", "#006400", "#B23AEE", "#FFD700", "#EE1289", "#FF7F24", "#104E8B", "#FF82AB", "#EE9A49", "#FFF68F", "#B4EEB4", "#BFEFFF", "#6CA6CD", "#EEAEEE", "#836FFF", "#8B1A1A", "#8B5A00", "#000080", "#551A8B", "#CCCCCC", "#636363", "#030303", "#8B0A50", "#8B7355",  "#FFEFD5","#CAE1FF")[1:ntaxa(mergedCOMBINED_glomfamily)]
+names(mycolorsnewall) <- unique(names(sort(taxa_sums(mergedCOMBINED_glomfamily), decreasing = TRUE)))
+
+pb <- plot_bar(mergedCOMBINED_glomfamily, x = "Station.char.fac", fill = "Family", facet_grid = "stratum")+geom_bar(stat="identity")+
+  theme(axis.text.y = element_text(angle = 90, hjust = 0.5)) + scale_x_discrete(limits = c("Subtropical", "Transition", "Subarctic")) +
+  theme_bw() + 
+  xlab(NULL) + 
+  ggtitle("Copepod Families") +
+  guides(fill=guide_legend(ncol=1))+
+  scale_fill_manual(values = mycolorsnewall, name = "Family", breaks = names(mycolorsnewall)[order(names(mycolorsnewall))]) + 
+  theme(text = element_text(size = 9),
+        plot.title = element_text(size = 10),
+        legend.key.size = unit(0.3, 'cm'),
+        axis.text.x = element_text(angle = 45, hjust=1))
+pb
+
+
+
+
+plots <- ggarrange(pa, pb, nrow = 1, ncol = 2, align = "hv", labels = "auto")
+plots
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/EpiMesoTaxonomy.pdf", height =3.5, width = 6.5)
+plots
+dev.off()
+
+
+
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/EpiMesoTaxonomy.jpeg", height =3.5, width = 6.5, unit = "in", quality = 100, res = 300)
+plots
+dev.off()
+
+
+```
+
+
+##epi vs meso traits  
+
+- total epi community vs total meso community 
+```{r}
+
+sample_data(COMBINED)$formerging <- paste(sample_data(COMBINED)$stratum, sample_data(COMBINED)$Station.char.fac)
+mergedCOMBINED <- merge_samples(COMBINED, group = "formerging") 
+mergedCOMBINED <- transform_sample_counts(mergedCOMBINED, function(x) x / sum(x))
+sample_data(mergedCOMBINED)$Station.char.fac <- as.character(strsplit(sample_names(mergedCOMBINED), " ", ) %>% sapply("[[", 2))
+sample_data(mergedCOMBINED)$stratum <- as.character(strsplit(sample_names(mergedCOMBINED), " ", ) %>% sapply("[[", 1))
+
+mergedCOMBINED_glom <- mergedCOMBINED
+tax_table(mergedCOMBINED_glom) <- tax_table(mergedCOMBINED_glom)[,c("Diet", "Phylum")]
+tax_table(mergedCOMBINED_glom)[,c("Diet")][is.na(tax_table(mergedCOMBINED_glom)[,c("Diet")])]<- "Unknown"
+mergedCOMBINED_glomfamily <- tax_glom(mergedCOMBINED_glom, taxrank = "Diet") 
+taxa_names(mergedCOMBINED_glomfamily) <- tax_table(mergedCOMBINED_glomfamily)[,1]
+pa <- plot_bar(mergedCOMBINED_glomfamily, x = "Station.char.fac", fill = "Diet", facet_grid = "stratum")+geom_bar(stat="identity")+
+  theme(axis.text.y = element_text(angle = 90, hjust = 0.5)) + scale_x_discrete(limits = c("Subtropical", "Transition", "Subarctic")) +
+  theme_bw() + 
+  xlab(NULL) + 
+  ylab(NULL) +
+  ggtitle("Diet")+ 
+  scale_fill_manual(values = c((RColorBrewer::brewer.pal(name="Dark2", n=4)[1:(ntaxa(mergedCOMBINED_glomfamily)-1)]), "black"))+
+    theme(legend.position="bottom",
+          legend.direction = "vertical",
+          axis.text.x = element_text(angle = 45, hjust = 1),
+          plot.title = element_text(hjust = 0.5))
+pa
+
+mergedCOMBINED_glom <- mergedCOMBINED
+tax_table(mergedCOMBINED_glom) <- tax_table(mergedCOMBINED_glom)[,c("FeedingBehavior", "Phylum")]
+tax_table(mergedCOMBINED_glom)[,c("FeedingBehavior")][is.na(tax_table(mergedCOMBINED_glom)[,c("FeedingBehavior")])]<- "Unknown"
+mergedCOMBINED_glomfamily <- tax_glom(mergedCOMBINED_glom, taxrank = "FeedingBehavior") 
+taxa_names(mergedCOMBINED_glomfamily) <- tax_table(mergedCOMBINED_glomfamily)[,1]
+pb <- plot_bar(mergedCOMBINED_glomfamily, x = "Station.char.fac", fill = "FeedingBehavior", facet_grid = "stratum")+geom_bar(stat="identity")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 0.5)) + scale_x_discrete(limits = c("Subtropical", "Transition", "Subarctic")) +
+  theme_bw() + 
+  xlab(NULL) + 
+  ylab(NULL) +
+  ggtitle("Feeding \nbehavior")+ 
+  scale_fill_manual(values = c((RColorBrewer::brewer.pal(name="Dark2", n=6)[1:(ntaxa(mergedCOMBINED_glomfamily)-1)]), "black"), name = "Feeding")+
+    theme(legend.position="bottom",
+          legend.direction = "vertical",
+          axis.text.x = element_text(angle = 45, hjust = 1),
+          plot.title = element_text(hjust = 0.5))
+pb
+
+mergedCOMBINED_glom <- mergedCOMBINED
+tax_table(mergedCOMBINED_glom) <- tax_table(mergedCOMBINED_glom)[,c("Spawning", "Phylum")]
+tax_table(mergedCOMBINED_glom)[,c("Spawning")][is.na(tax_table(mergedCOMBINED_glom)[,c("Spawning")])]<- "Unknown"
+mergedCOMBINED_glomfamily <- tax_glom(mergedCOMBINED_glom, taxrank = "Spawning") 
+taxa_names(mergedCOMBINED_glomfamily) <- tax_table(mergedCOMBINED_glomfamily)[,1]
+pc <- plot_bar(mergedCOMBINED_glomfamily, x = "Station.char.fac", fill = "Spawning", facet_grid = "stratum")+geom_bar(stat="identity")+
+  theme(axis.text.y = element_text(angle = 45, hjust = 0.5)) + scale_x_discrete(limits = c("Subtropical", "Transition", "Subarctic")) +
+  theme_bw() + 
+  xlab(NULL) + 
+  ylab(NULL) +
+  ggtitle("Spawning \nstrategy")+ 
+  scale_fill_manual(values = c((RColorBrewer::brewer.pal(name="Dark2", n=4)[1:(ntaxa(mergedCOMBINED_glomfamily)-1)]), "black"))+
+    theme(legend.position="bottom",
+          legend.direction = "vertical",
+          axis.text.x = element_text(angle = 45, hjust = 1),
+          plot.title = element_text(hjust = 0.5))
+
+mergedCOMBINED_glom <- mergedCOMBINED
+tax_table(mergedCOMBINED_glom) <- tax_table(mergedCOMBINED_glom)[,c("AsexualRepro", "Phylum")]
+tax_table(mergedCOMBINED_glom)[,c("AsexualRepro")][is.na(tax_table(mergedCOMBINED_glom)[,c("AsexualRepro")])]<- "Unknown"
+mergedCOMBINED_glomfamily <- tax_glom(mergedCOMBINED_glom, taxrank = "AsexualRepro") 
+taxa_names(mergedCOMBINED_glomfamily) <- tax_table(mergedCOMBINED_glomfamily)[,1]
+pd <- plot_bar(mergedCOMBINED_glomfamily, x = "Station.char.fac", fill = "AsexualRepro", facet_grid = "stratum")+geom_bar(stat="identity")+
+  theme(axis.text.y = element_text(angle = 45, hjust = 0.5)) + scale_x_discrete(limits = c("Subtropical", "Transition", "Subarctic")) +
+  theme_bw() + 
+  xlab(NULL) + 
+  ylab(NULL) +
+  ggtitle("Asexual \nreproduction")+ 
+  scale_fill_manual(values = c((RColorBrewer::brewer.pal(name="Dark2", n=4)[1:(ntaxa(mergedCOMBINED_glomfamily)-1)]), "black"), name = "Asexual",
+                    breaks = c("No", "Yes", "Unknown"),
+                labels = c("No", "Yes", "Unknown"))+
+    theme(legend.position="bottom",
+          legend.direction = "vertical",
+          axis.text.x = element_text(angle = 45, hjust = 1),
+          plot.title = element_text(hjust = 0.5))
+
+mergedCOMBINED_glom <- mergedCOMBINED
+tax_table(mergedCOMBINED_glom) <- tax_table(mergedCOMBINED_glom)[,c("Carbon", "Phylum")]
+tax_table(mergedCOMBINED_glom)[,c("Carbon")][is.na(tax_table(mergedCOMBINED_glom)[,c("Carbon")])]<- "Unknown"
+mergedCOMBINED_glomfamily <- tax_glom(mergedCOMBINED_glom, taxrank = "Carbon") 
+taxa_names(mergedCOMBINED_glomfamily) <- tax_table(mergedCOMBINED_glomfamily)[,1]
+pe <- plot_bar(mergedCOMBINED_glomfamily, x = "Station.char.fac", fill = "Carbon", facet_grid = "stratum")+geom_bar(stat="identity")+
+  theme(axis.text.y = element_text(angle = 45, hjust = 0.5)) + scale_x_discrete(limits = c("Subtropical", "Transition", "Subarctic")) +
+  theme_bw() + 
+  xlab(NULL) + 
+  ylab(NULL) +
+  ggtitle("Body \ncarbon")+ 
+  scale_fill_manual(values = c((RColorBrewer::brewer.pal(name="Dark2", n=4)[1:(ntaxa(mergedCOMBINED_glomfamily)-1)]), "black"))+
+    theme(legend.position="bottom",
+          legend.direction = "vertical",
+          axis.text.x = element_text(angle = 45, hjust = 1),
+          plot.title = element_text(hjust = 0.5))
+
+mergedCOMBINED <- merge_samples(COMBINED, group = "Station.char.fac") 
+mergedCOMBINED <- transform_sample_counts(mergedCOMBINED, function(x) x / sum(x))
+sample_data(mergedCOMBINED)$Station.char.fac <- as.character(strsplit(sample_names(mergedCOMBINED), " ", ) %>% sapply("[[", 1))
+#sample_data(mergedCOMBINED)$stratum <- as.character(strsplit(sample_names(mergedCOMBINED), " ", ) %>% sapply("[[", 1))
+mergedCOMBINED_glom <- mergedCOMBINED
+tax_table(mergedCOMBINED_glom) <- tax_table(mergedCOMBINED_glom)[,c("anymigration", "Phylum")]
+tax_table(mergedCOMBINED_glom)[,c("anymigration")][is.na(tax_table(mergedCOMBINED_glom)[,c("anymigration")])]<- "Unknown"
+sample_data(mergedCOMBINED_glom)[,c("stratum")] <- "0-1000m"
+mergedCOMBINED_glomfamily <- tax_glom(mergedCOMBINED_glom, taxrank = "anymigration") 
+taxa_names(mergedCOMBINED_glomfamily) <- tax_table(mergedCOMBINED_glomfamily)[,1]
+pf <- plot_bar(mergedCOMBINED_glomfamily, x = "Station.char.fac", fill = "anymigration", facet_grid = "stratum")+geom_bar(stat="identity")+
+  theme(axis.text.y = element_text(angle = 45, hjust = 0.5)) + scale_x_discrete(limits = c("Subtropical", "Transition", "Subarctic")) +
+  theme_bw() + 
+  xlab(NULL) + 
+  ylab(NULL) +
+  ggtitle("DVM") + 
+  scale_fill_manual(values = c((RColorBrewer::brewer.pal(name="Dark2", n=4)[1:(ntaxa(mergedCOMBINED_glomfamily))])), name = "DVM")+
+    theme(legend.position="bottom",
+          legend.direction = "vertical",
+          axis.text.x = element_text(angle = 45, hjust = 1),
+          plot.title = element_text(hjust = 0.5))
+
+plots <- ggarrange(pa, pb, pc, pd, pe, pf, nrow = 1, ncol = 6, align = "hv")
+library(patchwork)
+pa + ylab("Relative abundance") + pb + pc + pd +pe + pf + 
+  plot_layout(ncol = 6, widths = c(1.1,1,1,1,1,1)) +  
+  plot_annotation(tag_levels = 'a')&
+  theme(plot.tag = element_text(face = 'bold'),
+        plot.tag.position = c(0, 0.9))
+        
+        pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/EpiMesoCommunitiesTraits.pdf", height =8, width = 10)
+plots
+dev.off()
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/EpiMesoCommunitiesTraits_patchwork.pdf", height =6, width = 8.5)
+pa + ylab("Relative abundance") + pb + pc + pd +pe + pf + 
+  plot_layout(ncol = 6, widths = c(1.07,1,1,1,1,1)) +  
+  plot_annotation(tag_levels = 'a', caption="Relative abundance")&
+  theme(plot.caption=element_text(hjust=0, vjust = 1, angle = 90),
+        plot.tag = element_text(face = 'bold'),
+        plot.tag.position = c(0, 0.98))
+dev.off()
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/EpiMesoCommunitiesTraits_patchwork.jpeg", height =6, width = 8.5, unit = "in", quality = 100, res = 300)
+pa + ylab("Relative abundance") + pb + pc + pd +pe + pf + 
+  plot_layout(ncol = 6, widths = c(1.07,1,1,1,1,1)) +  
+  plot_annotation(tag_levels = 'a')&
+  theme(plot.tag = element_text(face = 'bold'),
+        plot.tag.position = c(0, 0.98))
+dev.off()
+
+```
+
+
+
+```{r size and depth by province}
+
+
+province_size <- ggplot(data = alltaxaranges) + 
+  geom_point(aes(x = MaxSize, y = meandepth15n), color = "blue") + 
+  geom_point(aes(x = MaxSize, y = meandepth34n), color = "green") + 
+  geom_point(aes(x = MaxSize, y = meandepth7n), color = "red") + 
+  geom_point(aes(x = MaxSize, y = meandepth15d), color = "orange") + 
+  geom_point(aes(x = MaxSize, y = meandepth34d), color = "purple") + 
+  geom_point(aes(x = MaxSize, y = meandepth7d), color = "yellow2") 
+province_size
+
+res.meandepth15n <- cor.test(alltaxaranges$meandepth15n, alltaxaranges$MaxSize, 
+                             method = "spearman",
+                             alternative = "greater",
+                             exact = FALSE)
+res.meandepth34n <- cor.test(alltaxaranges$meandepth34n, alltaxaranges$MaxSize, 
+                             method = "spearman",
+                             alternative = "greater",
+                             exact = FALSE)
+res.meandepth7n <- cor.test(alltaxaranges$meandepth7n, alltaxaranges$MaxSize, 
+                            method = "spearman",
+                            alternative = "greater",
+                            exact = FALSE)
+res.meandepth15d <- cor.test(alltaxaranges$meandepth15d, alltaxaranges$MaxSize, 
+                             method = "spearman",
+                             alternative = "greater",
+                             exact = FALSE)
+res.meandepth34d <- cor.test(alltaxaranges$meandepth34d, alltaxaranges$MaxSize, 
+                             method = "spearman",
+                             alternative = "greater",
+                             exact = FALSE)
+res.meandepth7d <- cor.test(alltaxaranges$meandepth7d, alltaxaranges$MaxSize, 
+                            method = "spearman",
+                            alternative = "greater", 
+                            exact = FALSE)
+res.meandepth15n
+res.meandepth34n
+res.meandepth7n
+res.meandepth15d
+res.meandepth34d
+res.meandepth7d
+
+alltaxaranges_longdepths <- pivot_longer(alltaxaranges[,c("taxonnamestocal", "classification", "MaxSize", 
+                                                          "meandepth",
+                                                    "meandepth15n",
+                                                    "meandepth34n",
+                                                    "meandepth7n",
+                                                    "meandepth15d",
+                                                    "meandepth34d",
+                                                    "meandepth7d")], 
+                                   meandepth:meandepth7d )
+alltaxaranges_longdepths$Province <- NA
+alltaxaranges_longdepths$Province[alltaxaranges_longdepths$name %in% c("meandepth15n", "meandepth15d")] <- "Transition"
+alltaxaranges_longdepths$Province[alltaxaranges_longdepths$name %in% c("meandepth34n", "meandepth34d")] <- "Subtropical"
+alltaxaranges_longdepths$Province[alltaxaranges_longdepths$name %in% c("meandepth7n", "meandepth7d")] <- "Subarctic"
+alltaxaranges_longdepths$Province_f <- factor(alltaxaranges_longdepths$Province, levels=c('Subtropical','Transition','Subarctic'))
+alltaxaranges_longdepths$Diel <- NA
+alltaxaranges_longdepths$Diel[alltaxaranges_longdepths$name %in% c("meandepth7n", "meandepth34n", "meandepth15n")] <- "Night"
+alltaxaranges_longdepths$Diel[alltaxaranges_longdepths$name %in% c("meandepth7d", "meandepth34d", "meandepth15d")] <- "Day"
+
+
+size_overall <- ggplot(alltaxaranges_longdepths[alltaxaranges_longdepths$name=="meandepth",], aes(x = MaxSize, y = value, group = name)) + 
+  geom_point() + 
+  geom_smooth(color = "black", method = "lm") + 
+    geom_hline(yintercept = 0, color = "grey40") +
+  scale_x_log10() + 
+  #ggtitle("Overall") + 
+  ylab("Depth (m)") + 
+  xlab("Taxon Maximum Size (mm)") +
+  scale_y_reverse(limits = c(950,-90))+ 
+   stat_cor(method = "spearman", label.y = 75, label.x.npc = "middle",
+            cor.coef.name = "rho",
+            alternative = "less", aes(label = paste(after_stat(r.label), cut(after_stat(p), 
+                                              breaks = c(-Inf, 0.0001, 0.001, 0.01, 0.05, Inf),
+                                              labels = c("'****'", "'***'", "'**'", "'*'", "'ns'")), sep = "~','~"))) +
+  scale_color_manual(values = c("grey50", "black"))
+size_overall
+
+province_size <- ggplot(alltaxaranges_longdepths[alltaxaranges_longdepths$name !="meandepth",], aes(x = MaxSize, y = value, group = name)) + 
+  geom_point(aes(color = Diel, shape = Diel)) + 
+  geom_smooth(data = alltaxaranges_longdepths[alltaxaranges_longdepths$name !="meandepth" & alltaxaranges_longdepths$name !="meandepth7n" & alltaxaranges_longdepths$name !="meandepth7d",],aes(x = MaxSize, y = value, group = name, color = Diel, linewidth = Diel), method = "loess", span = 0.85) + 
+  geom_hline( yintercept = 0, color = "grey40") +
+  scale_x_log10() + 
+  facet_grid(~Province_f) + 
+  ylab("Depth (m)") + 
+  xlab("Taxon Maximum Size (mm)") +
+  scale_y_reverse(limits = c(950,-190))+ 
+   stat_cor(method = "spearman", label.y = c(75,175,75,175,250,250),
+            size = 3.5,
+            cor.coef.name = "rho",
+            alternative = "less", aes(label = paste(after_stat(r.label), cut(after_stat(p), 
+                                              breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+                                              labels = c("'***'", "'**'", "'*'", "'ns'")), sep = "~','~"))) +
+  scale_color_manual(values = c("grey40", "black"), name = "Sampling\ntime")+
+  scale_shape_manual(values = c(1,16), name = "Sampling\ntime") + 
+  scale_linewidth_discrete(range = c(0.4,0.8), name = "Sampling\ntime") +
+  guides(color=guide_legend(override.aes=list(fill=NA)))
+
+province_size
+
+res.meanprovincesizeepi <- kruskal.test(MaxSize ~ Province_f, alltaxaranges_longdepths[alltaxaranges_longdepths$name !="meandepth" & !is.na(alltaxaranges_longdepths$value) & alltaxaranges_longdepths$classification == "Epipelagic",])
+res.meanprovincesizeepi
+res.meanprovincesizemeso <- kruskal.test(MaxSize ~ Province_f, alltaxaranges_longdepths[alltaxaranges_longdepths$name !="meandepth" & !is.na(alltaxaranges_longdepths$value) & alltaxaranges_longdepths$classification == "Mesopelagic",])
+res.meanprovincesizemeso
+
+
+meanprovincesize <- ggplot(alltaxaranges_longdepths[alltaxaranges_longdepths$name !="meandepth" & !is.na(alltaxaranges_longdepths$value),], aes(x = Province_f, y = MaxSize, group = Province_f)) + 
+  geom_jitter(aes(color = Diel)) + 
+  geom_violin() + 
+  facet_wrap(.~classification) + 
+  scale_y_log10()
+meanprovincesize
+
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/size_depth_province.jpeg", height =3.2, width = 7, unit = "in", quality = 100, res = 300)
+province_size
+dev.off()
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/size_depth_province.pdf", height =3.2, width = 7)
+province_size
+dev.off()
+
+```
+
+# supp: size across depth by taxon
+
+```{r size and depth by taxon}
+
+
+taxawithatleast10 <- names(table(alltaxaranges$Class))[table(alltaxaranges$Class) > 10]
+together_taxtable_atleast10 <- alltaxaranges[alltaxaranges$Class %in% taxawithatleast10,]
+together_taxtable_atleast10$Class[together_taxtable_atleast10$Class == "Hexanauplia"] <- "Copepoda"
+
+size_overall <- ggplot(together_taxtable_atleast10, aes(x = MaxSize, y = meandepth)) + 
+  geom_point() + 
+  geom_smooth(color = "black", method = "loess", span = 0.85) + 
+    geom_hline(yintercept = 0, color = "grey40") +
+  scale_x_log10() + 
+  #ggtitle("Overall") + 
+  ylab("Depth (m)") + 
+  xlab("Taxon Maximum Size (mm)") +
+  scale_y_reverse(limits = c(950,-90))+ 
+   stat_cor(method = "spearman", label.y = 75, label.x.npc = "left",
+            cor.coef.name = "rho",
+            alternative = "less", aes(label = paste(after_stat(r.label), cut(after_stat(p), 
+                                              breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+                                              labels = c("'***'", "'**'", "'*'", "'ns'")), sep = "~','~")))
+size_overall
+
+size_taxon <- ggplot(together_taxtable_atleast10[together_taxtable_atleast10$Class %in% c("Copepoda", "Hydrozoa", "Malacostraca", "Polychaeta"),], aes(x = MaxSize, y = meandepth)) + 
+  geom_point() + 
+  geom_smooth(color = "black", method = "loess", span = 0.85, data=together_taxtable_atleast10[together_taxtable_atleast10$Class %in% c("Hexanauplia", "Malacostraca"),]) + 
+    geom_hline(yintercept = 0, color = "grey40") +
+  scale_x_log10() + 
+  #ggtitle("Overall") + 
+  ylab("Depth (m)") + 
+  xlab("Taxon Maximum Size (mm)") +
+  scale_y_reverse(limits = c(950,-240), breaks = c(1000, 750, 500, 250, 0))+ 
+   stat_cor(method = "spearman", label.y = 125, label.x.npc = "left",
+            cor.coef.name = "rho",
+            alternative = "less", aes(label = paste(after_stat(r.label), cut(after_stat(p), 
+                                              breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+                                              labels = c("'***'", "'**'", "'*'", "'ns'")), sep = "~','~"))) +
+  
+  #  stat_cor(size = 2, inherit.aes = F, method = "pearson", cor.coef.name = "R", data = leray_proportions_trans, aes(x = carbon_append, y = seqs_append, label = paste(..r.label.., cut(..p.., breaks = c(-Inf, 0.001/56, 0.01/56, 0.05/56, Inf),                                               labels = c("'***'", "'**'", "'*'", "'ns'")),sep = "~")),     label.x.npc = 0.05,      label.y.npc = 0.90, hjust = 0)+ 
+
+  #  stat_cor(size = 3, label.x.npc = 0.35, label.y.npc = 0.1, inherit.aes = F, method = "spearman", cor.coef.name = "rho",  data = both_pval_sig, aes(x = meanseq, y = rho, label = paste(..r.label.., ..p.label.., sep = "~','~")))+ 
+
+  facet_wrap(.~Class, scales = "free_x")
+size_taxon
+
+
+size_taxa <- ggarrange(size_overall, size_taxon, align = "hv")
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/size_depth_taxon.jpeg", height =3, width = 8, unit = "in", quality = 100, res = 300)
+size_taxa
+dev.off()
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/size_depth_taxon.pdf", height =3, width = 8)
+size_taxa
+dev.off()
+```
+
+
+#supp: richness vs sequencing depth
+
+```{r}
+sample_data(COI)$richness <- estimate_richness(COI, split = TRUE, measures = "Observed")$Observed
+sample_data(ZHAN)$richness <- estimate_richness(ZHAN, split = TRUE, measures = "Observed")$Observed
+sample_data(COI)$sequencingdepth <- sample_sums(COI)
+sample_data(ZHAN)$sequencingdepth <- sample_sums(ZHAN)
+
+#random seed set in script setup chunk
+sample_data(COI)$richnessrarefied <- estimate_richness(rarefy_even_depth(COI), split = TRUE, measures = "Observed")$Observed
+sample_data(ZHAN)$richnessrarefied <- estimate_richness(rarefy_even_depth(ZHAN), split = TRUE, measures = "Observed")$Observed
+#sample_data(COI)$sequencingdepth <- sample_sums(COI)
+#sample_data(ZHAN)$sequencingdepth <- sample_sums(ZHAN)
+
+
+COIunrarefied <- ggplot(data.frame(sample_data(COI)), aes(x = sequencingdepth, y = richness, color = stratum)) + geom_point() + geom_smooth(method = "lm") + 
+   stat_cor(data = data.frame(sample_data(subset_samples(COI, stratum == "Epipelagic") )),
+            inherit.aes = F,
+     method = "pearson", label.y = 275, label.x.npc = "left",
+            cor.coef.name = "R",
+            alternative = "less", aes(x = sequencingdepth, y = richness,
+                                      label = paste("Epi:", after_stat(rr.label), "~','~", cut(after_stat(p), 
+                                              breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+                                              labels = c("'***'", "'**'", "'*'", "'ns'")), sep = " "))) + 
+   stat_cor(data = data.frame(sample_data(subset_samples(COI, stratum == "Mesopelagic") )),
+            inherit.aes = F,
+     method = "pearson", label.y = 230, label.x.npc = "left",
+            cor.coef.name = "R",
+            alternative = "less", aes(x = sequencingdepth, y = richness,
+                                      label = paste("Meso:", after_stat(rr.label), "~','~", cut(after_stat(p), 
+                                              breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+                                              labels = c("'***'", "'**'", "'*'", "'ns'")), sep = " "))) + 
+  ggtitle("COI, unrarefied")+ 
+  ylab("Richness (# OTUs)") + 
+  xlab("Sequencing depth (reads)") + 
+  labs(color = "Depth zone") + 
+  ylim(0,325)+ 
+  xlim(0,125000)
+ZHANunrarefied <- ggplot(data.frame(sample_data(ZHAN)), aes(x = sequencingdepth, y = richness, color = stratum)) + geom_point()+ geom_smooth(method = "lm") + 
+   stat_cor(data = data.frame(sample_data(subset_samples(ZHAN, stratum == "Epipelagic") )),
+            inherit.aes = F,
+     method = "pearson", label.y = 215, label.x.npc = "left",
+            cor.coef.name = "R",
+            alternative = "less", aes(x = sequencingdepth, y = richness,
+                                      label = paste("Epi:", after_stat(rr.label), "~','~", cut(after_stat(p), 
+                                              breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+                                              labels = c("'***'", "'**'", "'*'", "'ns'")), sep = " "))) + 
+   stat_cor(data = data.frame(sample_data(subset_samples(ZHAN, stratum == "Mesopelagic") )),
+            inherit.aes = F,
+     method = "pearson", label.y = 180, label.x.npc = "left",
+            cor.coef.name = "R",
+            alternative = "less", aes(x = sequencingdepth, y = richness,
+                                      label = paste("Meso:", after_stat(rr.label), "~','~", cut(after_stat(p), 
+                                              breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+                                              labels = c("'***'", "'**'", "'*'", "'ns'")), sep = " ")))+ 
+  ggtitle("18S, unrarefied") + 
+  ylab("Richness (# ASVs)") + 
+  xlab("Sequencing depth (reads)") + 
+  labs(color = "Depth zone") + 
+  ylim(0,240)+
+  xlab(0,100000)
+
+COIrarefied <- ggplot(data.frame(sample_data(COI)), aes(x = sequencingdepth, y = richnessrarefied, color = stratum)) + geom_point() + geom_smooth(method = "lm") + 
+   stat_cor(data = data.frame(sample_data(subset_samples(COI, stratum == "Epipelagic") )),
+            inherit.aes = F,
+     method = "pearson", label.y = 275, label.x.npc = "left",
+            cor.coef.name = "R",
+            alternative = "less", aes(x = sequencingdepth, y = richnessrarefied,
+                                      label = paste("Epi:", after_stat(rr.label), "~','~", cut(after_stat(p), 
+                                              breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+                                              labels = c("'***'", "'**'", "'*'", "'ns'")), sep = " "))) + 
+   stat_cor(data = data.frame(sample_data(subset_samples(COI, stratum == "Mesopelagic") )),
+            inherit.aes = F,
+     method = "pearson", label.y = 230, label.x.npc = "left",
+            cor.coef.name = "R",
+            alternative = "less", aes(x = sequencingdepth, y = richnessrarefied,
+                                      label = paste("Meso:", after_stat(rr.label), "~','~", cut(after_stat(p), 
+                                              breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+                                              labels = c("'***'", "'**'", "'*'", "'ns'")), sep = " ")))+ 
+  ggtitle("COI, rarefied")+ 
+  ylab("Richness (# OTUs)") + 
+  xlab("Sequencing depth (reads)") + 
+  labs(color = "Depth zone")+
+  ylim(0,325) + 
+  xlim(0,125000)
+ZHANrarefied <- ggplot(data.frame(sample_data(ZHAN)), aes(x = sequencingdepth, y = richnessrarefied, color = stratum)) + geom_point()+ geom_smooth(method = "lm") + 
+   stat_cor(data = data.frame(sample_data(subset_samples(ZHAN, stratum == "Epipelagic") )),
+            inherit.aes = F,
+     method = "pearson", label.y = 215, label.x.npc = "left",
+            cor.coef.name = "R",
+            alternative = "less", aes(x = sequencingdepth, y = richnessrarefied,
+                                      label = paste("Epi:", after_stat(rr.label), "~','~", cut(after_stat(p), 
+                                              breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+                                              labels = c("'***'", "'**'", "'*'", "'ns'")), sep = " "))) + 
+   stat_cor(data = data.frame(sample_data(subset_samples(ZHAN, stratum == "Mesopelagic") )),
+            inherit.aes = F,
+     method = "pearson", label.y = 180, label.x.npc = "left",
+            cor.coef.name = "R",
+            alternative = "less", aes(x = sequencingdepth, y = richnessrarefied,
+                                      label = paste("Meso:", after_stat(rr.label), "~','~", cut(after_stat(p), 
+                                              breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+                                              labels = c("'***'", "'**'", "'*'", "'ns'")), sep = " ")))+ 
+  ggtitle("18S, rarefied")+ 
+  ylab("Richness (# ASVs)") + 
+  xlab("Sequencing depth (reads)") + 
+  labs(color = "Depth zone") + 
+  ylim(0,240)+
+  xlab(0,100000)
+
+
+rarefication4by4 <- ggarrange(COIunrarefied + ylab(NULL) + xlab(NULL), ZHANunrarefied + ylab(NULL) + xlab(NULL), COIrarefied + ylab(NULL) + xlab(NULL), ZHANrarefied + ylab(NULL) + xlab(NULL), ncol = 2, nrow = 2, align = "hv", common.legend = T, legend = "bottom", labels = c("a)", "b)", "c)", "d)"))
+rarefication4by4 <-  annotate_figure(rarefication4by4, left = text_grob("Richness (# ASVs or OTUs)", rot = 90))
+rarefication4by4 <-  annotate_figure(rarefication4by4, bottom = text_grob("Sequencing depth (reads)"))
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/richnessvssequencingdepth.pdf", height =4, width = 6.5)
+rarefication4by4
+dev.off()
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/richnessvssequencingdepth.jpeg", height =4, width = 6.5, unit = "in", quality = 100, res = 300)
+rarefication4by4
+dev.off()
+
+```
+
+
+
+#supp: fig 2 with rarefied data
+```{r how does richness vary between stations?}
+#random seed set in script setup chunk
+COIrare <- rarefy_even_depth(COI)
+ZHANrare <- rarefy_even_depth(ZHAN)
+sample_data(COIrare)$richness <- estimate_richness(COIrare, split = TRUE, measures = "Observed")$Observed
+sample_data(ZHANrare)$richness <- estimate_richness(ZHANrare, split = TRUE, measures = "Observed")$Observed
+
+
+
+plot_richness_steph <- function (physeq, x = "Sample", y = "richness", 
+                                 title = NULL, facet_grid = NULL, w = "binwidth") {
+  mdf = psmelt(physeq)
+  disp1 <- max(mdf$richness)*1.05
+  mdf$richness[mdf$Diel == "Night"] <- mdf$richness[mdf$Diel == "Night"]*-1
+  mdf$groupings <- paste(mdf$Diel, mdf$Station.char.fac)
+  p <- ggplot(mdf) + 
+    annotate("rect", xmin = -Inf,
+             xmax = Inf,
+             ymin =  -Inf,
+             ymax = 0, fill = "grey60", alpha = 0.5) + 
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 4), limits = c(-disp1, disp1), labels=abs) +
+    geom_point(aes(x = target.mean, y = richness, group = groupings, color = Station.char.fac)) + 
+    geom_line(aes(x = target.mean, y = richness, group = groupings, color = Station.char.fac)) + 
+    theme_bw() + 
+    coord_flip() + 
+    scale_x_reverse() +
+    labs(x = "Depth (m)", y = "OTU Richness", color = "Province") +
+    geom_hline(yintercept = 0, size = 0.2) 
+  if (!is.null(facet_grid)) {
+    p <- p + facet_grid(facet_grid)
+  }
+  if (!is.null(title)) {
+    p <- p + ggtitle(title)
+  }
+  return(p)
+}
+
+plot_richness_stephCOI <- function (physeq, x = "Sample", y = "richness", 
+                                 title = NULL, facet_grid = NULL, w = "binwidth") {
+  mdf = psmelt(physeq)
+  disp1 <- max(mdf$richness)*1.05
+  mdf$richness[mdf$Diel == "Night"] <- mdf$richness[mdf$Diel == "Night"]*-1
+  mdf$groupings <- paste(mdf$Diel, mdf$Station.char.fac)
+  p <- ggplot(mdf) + 
+    annotate("rect", xmin = -Inf,
+             xmax = Inf,
+             ymin =  -Inf,
+             ymax = 0, fill = "grey60", alpha = 0.5) + 
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 4), limits = c(-disp1, disp1), labels=abs) +
+    geom_point(aes(x = target.mean, y = richness, group = groupings, color = Station.char.fac), shape = 17) + 
+    geom_line(aes(x = target.mean, y = richness, group = groupings, color = Station.char.fac)) + 
+    theme_bw() + 
+    coord_flip() + 
+    scale_x_reverse() +
+    labs(x = "Depth (m)", y = "OTU Richness", color = "Province") +
+    geom_hline(yintercept = 0, size = 0.2) 
+  if (!is.null(facet_grid)) {
+    p <- p + facet_grid(facet_grid)
+  }
+  if (!is.null(title)) {
+    p <- p + ggtitle(title)
+  }
+  return(p)
+}
+
+
+prichnesscoi <- plot_richness_stephCOI(COIrare, x = "target.mean") + 
+  scale_color_manual(values = c( "#436EEE","#458B00", "#EE3B3B"), name = "Province")  + 
+  scale_shape_manual(values = c(2)) +
+  theme(#axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+    #axis.text.y = element_text(angle = 90, vjust = 0.5, hjust=1)
+  )  + 
+  ggtitle("Richness\n(COI, rarefied)") + 
+  ylab("OTUs (#)") 
+
+
+prichnesszhan <- plot_richness_steph(ZHANrare, x = "target.mean") + 
+  scale_color_manual(values = c( "#436EEE","#458B00", "#EE3B3B"), name = "Province") +
+  theme(#axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+    #axis.text.y = element_text(angle = 90, vjust = 0.5, hjust=1)
+  ) + 
+  ggtitle("Richness\n(18S, rarefied)") + 
+  ylab("ASVs (#)")
+
+
+richnessplots <- ggarrange(prichnesscoi, prichnesszhan, nrow = 1, ncol = 2, align = "hv", common.legend = T, legend = "bottom", labels = "auto")
+
+
+
+```
+
+```{r by marker richness}
+zhan_epi <- subset_samples(ZHANrare, stratum == "Epipelagic")
+zhan_meso <- subset_samples(ZHANrare, stratum == "Mesopelagic")
+
+zhan_epi_merged <- merge_samples(zhan_epi, group = "Station.char.fac")
+sample_data(zhan_epi_merged)$totalrichness <- estimate_richness(zhan_epi_merged, split = TRUE, measures = "Observed")$Observed
+zhan_meso_merged <- merge_samples(zhan_meso, group = "Station.char.fac")
+sample_data(zhan_meso_merged)$totalrichness <- estimate_richness(zhan_meso_merged, split = TRUE, measures = "Observed")$Observed
+zhan_merged <- merge_samples(ZHANrare, group = "Station.char.fac")
+sample_data(zhan_merged)$totalrichness <- estimate_richness(zhan_merged, split = TRUE, measures = "Observed")$Observed
+
+
+observednumbers_18S <- data.frame(estimate_richness(zhan_epi_merged, split = TRUE, measures = "Observed")$Observed,
+                                  estimate_richness(zhan_meso_merged, split = TRUE, measures = "Observed")$Observed, 
+                                  estimate_richness(zhan_merged, split = TRUE, measures = "Observed")$Observed, 
+                                  sample_names(zhan_epi_merged), 
+                                  sample_names(zhan_meso_merged), 
+                                  sample_names(zhan_merged),
+                                  rep("Epipelagic", n = 3), 
+                                  rep("Mesopelagic", n = 3), 
+                                  rep("Total", n = 3),
+                                  rep("18S", n = 3))
+colnames(observednumbers_18S) <- c("EpiObserved", "MesoObserved", "TotalObserved", "Epinames", "Mesonames", "Totalnames", "Epipelagic", "Mesopelagic", "Total", "Marker")
+
+p_zhan <- ggplot(observednumbers_18S) + 
+  geom_point(aes(x = Epinames, y = EpiObserved, group = Epipelagic, color = Epipelagic)) + 
+  geom_line(aes(x = Epinames, y = EpiObserved, group = Epipelagic, color = Epipelagic)) + 
+  geom_point(aes(x = Mesonames, y = MesoObserved, group = Mesopelagic, color = Mesopelagic)) + 
+  geom_line(aes(x = Mesonames, y = MesoObserved, group = Mesopelagic, color = Mesopelagic)) + 
+  scale_x_discrete(limits = c("Subtropical", "Transition", "Subarctic")) +
+  theme_bw() + 
+  labs(y = "Observed ASVs (#)", x = "Province", color = "Depth")+
+  scale_color_manual("Depth", values = c("blue", "red"))  + 
+  ggtitle("18S Richness")
+
+
+coi_epi <- subset_samples(COIrare, stratum == "Epipelagic")
+coi_meso <- subset_samples(COIrare, stratum == "Mesopelagic")
+coi_epi_merged <- merge_samples(coi_epi, group = "Station.char.fac")
+sample_data(coi_epi_merged)$totalrichness <- estimate_richness(coi_epi_merged, split = TRUE, measures = "Observed")$Observed
+coi_meso_merged <- merge_samples(coi_meso, group = "Station.char.fac")
+sample_data(coi_meso_merged)$totalrichness <- estimate_richness(coi_meso_merged, split = TRUE, measures = "Observed")$Observed
+coi_merged <- merge_samples(COIrare, group = "Station.char.fac")
+sample_data(coi_merged)$totalrichness <- estimate_richness(coi_merged, split = TRUE, measures = "Observed")$Observed
+
+
+observednumbers_coi <- data.frame(estimate_richness(coi_epi_merged, split = TRUE, measures = "Observed")$Observed,
+                                  estimate_richness(coi_meso_merged, split = TRUE, measures = "Observed")$Observed, 
+                                  estimate_richness(coi_merged, split = TRUE, measures = "Observed")$Observed,
+                                  sample_names(coi_epi_merged), 
+                                  sample_names(coi_meso_merged), 
+                                  sample_names(coi_merged), 
+                                  rep("Epipelagic", n = 3), 
+                                  rep("Mesopelagic", n = 3), 
+                                  rep("Total", n = 3),
+                                  rep("COI", n = 3))
+colnames(observednumbers_coi) <- c("EpiObserved", "MesoObserved", "TotalObserved", "Epinames", "Mesonames", "Totalnames", "Epipelagic", "Mesopelagic", "Total", "Marker")
+
+p_coi <- ggplot(observednumbers_coi) + 
+  geom_point(aes(x = Epinames, y = EpiObserved, group = Epipelagic, color = Epipelagic)) + 
+  geom_line(aes(x = Epinames, y = EpiObserved, group = Epipelagic, color = Epipelagic)) + 
+  geom_point(aes(x = Mesonames, y = MesoObserved, group = Mesopelagic, color = Mesopelagic)) + 
+  geom_line(aes(x = Mesonames, y = MesoObserved, group = Mesopelagic, color = Mesopelagic)) + 
+  scale_x_discrete(limits = c("Subtropical", "Transition", "Subarctic")) +
+  theme_bw() + 
+  labs(y = "Observed OTUs (#)", x = "Province", color = "Depth")+
+  scale_color_manual("Depth", values = c("blue", "red"))  + 
+  ggtitle("COI Richness")
+richnessplots <- ggarrange(p_zhan, p_coi, align = "hv", labels = "auto", common.legend = TRUE, legend = "right", ncol = 2, nrow = 1)
+
+
+```
+
+```{r markers together richness}
+p_both <- ggplot(observednumbers_coi) + 
+  geom_point(aes(x = Epinames, y = EpiObserved, group = Epipelagic, color = Epipelagic, shape = Marker)) + 
+  geom_line(aes(x = Epinames, y = EpiObserved, group = Epipelagic, color = Epipelagic, linetype = Marker)) + 
+  geom_point(aes(x = Mesonames, y = MesoObserved, group = Mesopelagic, color = Mesopelagic, shape = Marker)) + 
+  geom_line(aes(x = Mesonames, y = MesoObserved, group = Mesopelagic, color = Mesopelagic, linetype = Marker)) + 
+  geom_point(aes(x = Totalnames, y = TotalObserved, group = Total, color = Total, shape = Marker)) + 
+  geom_line(aes(x = Totalnames, y = TotalObserved, group = Total, color = Total, linetype = Marker)) + 
+  
+  geom_point(data = observednumbers_18S, aes(x = Epinames, y = EpiObserved, group = Epipelagic, color = Epipelagic, shape = Marker)) + 
+  geom_line(data = observednumbers_18S, aes(x = Epinames, y = EpiObserved, group = Epipelagic, color = Epipelagic, linetype = Marker)) + 
+  geom_point(data = observednumbers_18S, aes(x = Mesonames, y = MesoObserved, group = Mesopelagic, color = Mesopelagic, shape = Marker)) + 
+  geom_line(data = observednumbers_18S, aes(x = Mesonames, y = MesoObserved, group = Mesopelagic, color = Mesopelagic, linetype = Marker)) + 
+  geom_point(data = observednumbers_18S, aes(x = Totalnames, y = TotalObserved, group = Total, color = Total, shape = Marker)) + 
+  geom_line(data = observednumbers_18S, aes(x = Totalnames, y = TotalObserved, group = Total, color = Total, linetype = Marker)) + 
+  
+  scale_x_discrete(limits = c("Subtropical", "Transition", "Subarctic")) +
+  theme_bw() + 
+  labs(y = "Richness (rarefied)", x = "Province", color = "Depth", shape = "Marker", linetype = "Marker") + 
+  scale_colour_manual(values = c("#9370DB", "#8B4C39", "#030303")) +
+     guides(color = guide_legend(override.aes = list(shape = c(NA, NA, NA), size = c(4) ) ) ) #linetype = guide_legend(override.aes = list(size = 2))
+p_both
+```
+
+```{r richness by depth and overall three panels}
+p_both_vert <- p_both + 
+  theme(legend.position="bottom", legend.box = "horizontal", legend.direction = "vertical", legend.title = element_text(size=11), legend.text = element_text(size=8)) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ylim(0,550) + ggtitle("Total Richness (rarefied)") 
+p_both_vert
+
+richnessplots <- ggarrange(prichnesscoi, prichnesszhan, nrow = 1, ncol = 2, align = "hv", common.legend = T, legend = "bottom", labels = "auto")
+richnessplots <- ggarrange(richnessplots, p_both_vert, nrow = 1, ncol = 2, widths = c(2,1.3), labels = c("", "c"))
+
+richnessplots
+
+pdf(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/Richness_Depth_Provinces_rarefied.pdf", height =4, width = 6.5)
+richnessplots
+dev.off()
+
+jpeg(file = "~/Documents/Chapter2/manuscript_analysis/R/Plots_For_Publication/Richness_Depth_Provinces_rarefied.jpeg", height =4, width = 6.5, unit = "in", quality = 100, res = 300)
+richnessplots
+dev.off()
+
+
+```
+
+
