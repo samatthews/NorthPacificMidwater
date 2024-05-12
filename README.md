@@ -5,9 +5,8 @@
 [![OCE-1041068](https://img.shields.io/badge/NSF-1650112-blue.svg)](https://www.nsf.gov/awardsearch/showAward?AWD_ID=1650112)
 
 # Divergent patterns of zooplankton connectivity in the epipelagic and mesopelagic zones of the eastern North Pacific 
-QIIME2 and R scripts for the manuscript <i> Divergent patterns of zooplankton connectivity in the epipelagic and mesopelagic zones of the eastern North Pacific </i>
+QIIME2 and R scripts for  <i> Divergent patterns of zooplankton connectivity in the epipelagic and mesopelagic zones of the eastern North Pacific </i>
 
-Matthews, S.A., and Blanco-Bercial, L.
+Matthews, S.A., and Blanco-Bercial, L. 2023.
 
-In review at Molecular Ecology (March, 2023)
-
+https://doi.org/10.1002/ece3.10664
